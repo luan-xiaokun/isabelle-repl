@@ -1,0 +1,178 @@
+syntax = "proto3";
+package isa;
+
+service IsabelleREPL {
+  // ── Session ───────────────────────────────────────────────────
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  rpc DestroySession(SessionRef)          returns (Empty);
+
+  // ── Theory (stateless queries, drive cache internally) ────────
+  rpc LoadTheory(LoadTheoryRequest)           returns (LoadTheoryResponse);
+  rpc ListTheoryCommands(ListCommandsRequest) returns (ListCommandsResponse);
+
+  // ── ProofState lifecycle ──────────────────────────────────────
+  rpc InitState(InitStateRequest) returns (InitStateResponse);
+  rpc DropState(DropStateRequest) returns (Empty);
+  rpc DropAllStates(SessionRef)   returns (Empty);
+
+  // ── Execution ─────────────────────────────────────────────────
+  rpc Execute(ExecuteRequest)           returns (StateResult);
+  rpc ExecuteBatch(ExecuteBatchRequest) returns (ExecuteBatchResponse);
+
+  // ── Sledgehammer ──────────────────────────────────────────────
+  rpc RunSledgehammer(SledgehammerRequest) returns (SledgehammerResponse);
+
+  // ── Query (on-demand, NOT bundled into every response) ────────
+  rpc GetStateInfo(GetStateInfoRequest) returns (StateInfo);
+}
+
+// ── Enums ─────────────────────────────────────────────────────────
+
+enum ExecStatus {
+  SUCCESS        = 0;
+  PROOF_COMPLETE = 1;  // proof_level dropped to 0
+  ERROR          = 2;
+  TIMEOUT        = 3;
+}
+
+enum StateMode {
+  TOPLEVEL      = 0;
+  THEORY        = 1;
+  LOCAL_THEORY  = 2;
+  PROOF         = 3;
+  SKIPPED_PROOF = 4;
+}
+
+// ── Session ───────────────────────────────────────────────────────
+
+message SessionRef { string session_id = 1; }
+
+message CreateSessionRequest {
+  string isa_path          = 1;
+  string logic             = 2;  // e.g. "HOL", "HOL-Analysis"
+  string working_directory = 3;
+  repeated string session_roots = 4;  // AFP dirs etc.
+}
+message CreateSessionResponse {
+  string session_id = 1;
+}
+
+// ── Theory ────────────────────────────────────────────────────────
+
+message LoadTheoryRequest {
+  string session_id  = 1;
+  string theory_path = 2;  // absolute path to .thy file
+}
+message LoadTheoryResponse {
+  // Confirms theory is cached; client uses theory_path to reference it later
+  string theory_path   = 1;
+  int32  command_count = 2;  // how many transitions parsed
+}
+
+message ListCommandsRequest {
+  string session_id       = 1;
+  string theory_path      = 2;
+  bool   only_proof_stmts = 3;  // only lemma/theorem/... commands
+}
+message TheoryCommand {
+  string text   = 1;  // full command source text
+  string kind   = 2;  // "lemma", "theorem", "definition", ...
+  int32  line   = 3;
+  int32  column = 4;
+}
+message ListCommandsResponse {
+  repeated TheoryCommand commands = 1;
+}
+
+// ── ProofState ────────────────────────────────────────────────────
+
+message StateRef { string state_id = 1; }
+
+message InitStateRequest {
+  string session_id  = 1;
+  string theory_path = 2;
+  oneof position {
+    int32  after_line    = 3;  // execute all cmds whose source line <= after_line
+    string after_command = 4;  // execute up to and including the text-matching cmd
+  }
+  int32 timeout_ms   = 5;
+  bool  include_text = 6;  // include proof_state_text in StateResult (expensive)
+}
+
+// InitState either succeeds (returning a usable state) or fails (returning the
+// error location plus the last state that was successfully reached before it).
+message InitStateResponse {
+  oneof result {
+    StateResult    success = 1;
+    InitStateError error   = 2;
+  }
+}
+
+message InitStateError {
+  int32       failed_line  = 1;  // source line of the command that failed
+  string      error_msg    = 2;
+  StateResult last_success = 3;  // state just before the failing cmd; absent if
+                                 // the very first command (theory header) fails
+}
+
+message DropStateRequest {
+  repeated string state_ids = 1;  // batch drop
+}
+
+// ── Execution ─────────────────────────────────────────────────────
+
+message ExecuteRequest {
+  string source_state_id = 1;
+  string tactic          = 2;
+  int32  timeout_ms      = 3;
+  bool   include_text    = 4;  // include proof_state_text in StateResult (expensive)
+}
+
+// proof_state_text is populated only when include_text=true in the request; empty otherwise.
+message StateResult {
+  string     state_id          = 1;  // new state ID (always fresh UUID)
+  ExecStatus status            = 2;
+  string     error_msg         = 3;  // non-empty only on ERROR/TIMEOUT
+  int32      proof_level       = 4;
+  StateMode  mode              = 5;
+  string     proof_state_text  = 6;  // expensive; only set when include_text=true
+}
+
+message ExecuteBatchRequest {
+  string          source_state_id = 1;
+  repeated string tactics         = 2;
+  int32           timeout_ms      = 3;
+  bool            drop_failed     = 4;  // auto-drop ERROR/TIMEOUT states
+}
+message ExecuteBatchResponse {
+  repeated StateResult results = 1;  // parallel to tactics list
+}
+
+// ── Sledgehammer ──────────────────────────────────────────────────
+
+message SledgehammerRequest {
+  string source_state_id        = 1;
+  int32  timeout_ms             = 2;
+  int32  sledgehammer_timeout_ms = 3;
+}
+message SledgehammerResponse {
+  bool        found  = 1;
+  string      tactic = 2;  // e.g. "by (metis ...)"
+  StateResult result = 3;  // the state after applying tactic (only if found)
+}
+
+// ── Query ─────────────────────────────────────────────────────────
+
+message GetStateInfoRequest {
+  string state_id     = 1;
+  bool   include_text = 2;  // include proof_state_text (expensive)
+}
+message StateInfo {
+  string    state_id          = 1;
+  StateMode mode              = 2;
+  int32     proof_level       = 3;
+  string    proof_state_text  = 4;  // only when include_text=true
+  string    local_theory_desc = 5;  // e.g. "locale foo" when in LocalTheory mode
+}
+
+message Empty {}
