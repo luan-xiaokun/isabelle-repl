@@ -23,7 +23,8 @@ object TestEnv {
   private def fallbackPath(v: String): os.Path = os.Path(v, os.pwd)
 
   def load(): Either[List[String], IntegrationEnv] = {
-    val isaPath = envPath("ISABELLE_PATH").getOrElse(fallbackPath("/home/lxk/Isabelle2025"))
+    val isaPath =
+      envPath("ISABELLE_PATH").getOrElse(fallbackPath("/home/lxk/Isabelle2025"))
     val afpThys = envPath("AFP_PATH")
       .getOrElse(fallbackPath("/home/lxk/repositories/afp-2025/thys"))
 
@@ -41,8 +42,8 @@ object TestEnv {
       ("Topology dir", topologyDir, os.isDir(topologyDir))
     )
 
-    val missing = checks.collect {
-      case (label, p, false) => s"Missing $label: $p"
+    val missing = checks.collect { case (label, p, false) =>
+      s"Missing $label: $p"
     }
 
     if (missing.nonEmpty) Left(missing)

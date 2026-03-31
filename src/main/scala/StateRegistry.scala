@@ -9,8 +9,8 @@ import de.unruh.isabelle.pure.ToplevelState
 /** Owns the global state_id -> session_id ownership mapping.
   *
   * Source-of-truth invariant:
-  * - if a state_id is live, its owner is recorded here
-  * - a missing owner means the state is not addressable through public APIs
+  *   - if a state_id is live, its owner is recorded here
+  *   - a missing owner means the state is not addressable through public APIs
   */
 final class StateRegistry {
   private val stateOwnerMap = new ConcurrentHashMap[String, String]()
@@ -48,7 +48,9 @@ final class StateRegistry {
 
   def groupStateIdsByOwner(stateIds: Seq[String]): Map[String, List[String]] =
     stateIds.distinct
-      .flatMap(stateId => ownerOf(stateId).map(sessionId => sessionId -> stateId))
+      .flatMap(stateId =>
+        ownerOf(stateId).map(sessionId => sessionId -> stateId)
+      )
       .groupBy(_._1)
       .view
       .mapValues(_.map(_._2).toList)
@@ -58,7 +60,9 @@ final class StateRegistry {
       sessionId: String,
       session: IsabelleSession
   ): Unit = {
-    val stateIds = stateOwnerMap.entrySet().asScala
+    val stateIds = stateOwnerMap
+      .entrySet()
+      .asScala
       .collect { case e if e.getValue == sessionId => e.getKey }
       .toList
     stateIds.foreach(stateId => stateOwnerMap.remove(stateId, sessionId))

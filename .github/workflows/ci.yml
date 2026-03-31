@@ -61,5 +61,14 @@ jobs:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
 
+      - name: scalafmtSbt
+        run: sbt scalafmtSbt
+
+      - name: scalafmtAll
+        run: sbt scalafmtAll
+
+      - name: scalafmtCheckAll
+        run: sbt scalafmtCheckAll
+
       - name: Compile Scala main and test code
         run: sbt "Test / compile"
