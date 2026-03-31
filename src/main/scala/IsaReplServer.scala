@@ -4,7 +4,6 @@ import java.util.UUID
 import java.util.concurrent.{ConcurrentHashMap, Executors}
 import java.util.logging.Logger
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 import de.unruh.isabelle.control.{
@@ -24,7 +23,6 @@ final class ManagedSession(
     val theorySourceIndex: TheorySourceIndex
 ) {
   val lock: AnyRef = new AnyRef
-  val liveStateIds = ConcurrentHashMap.newKeySet[String]()
   private var closing = false
 
   def isClosingLocked: Boolean = closing
@@ -38,9 +36,7 @@ class IsaReplService(implicit ec: ExecutionContext)
 
   private val log = Logger.getLogger(classOf[IsaReplService].getName)
   private val sessionMap = new ConcurrentHashMap[String, ManagedSession]()
-  // Live-state invariant: a live state_id must exist here, in
-  // ManagedSession.liveStateIds, and in IsabelleSession.stateMap.
-  private val stateOwnerMap = new ConcurrentHashMap[String, String]()
+  private val stateRegistry = new StateRegistry()
 
   private def tryWrapper[T](f: => T): T =
     try {
@@ -96,17 +92,18 @@ class IsaReplService(implicit ec: ExecutionContext)
       managed: ManagedSession,
       stateId: String
   ): Unit = {
-    val ownerSessionId = stateOwnerMap.get(stateId)
     if (
-      ownerSessionId != managed.sessionId ||
-      !managed.liveStateIds.contains(stateId) ||
-      !managed.session.hasStateLocal(stateId)
+      !stateRegistry.isLiveStateInSession(
+        managed.sessionId,
+        stateId,
+        managed.session
+      )
     )
       stateNotFound(stateId)
   }
 
   private def withManagedState[T](stateId: String)(f: ManagedSession => T): T = {
-    val ownerSessionId = Option(stateOwnerMap.get(stateId)).getOrElse {
+    val ownerSessionId = stateRegistry.ownerOf(stateId).getOrElse {
       stateNotFound(stateId)
     }
     val managed =
@@ -123,25 +120,20 @@ class IsaReplService(implicit ec: ExecutionContext)
       stateId: String,
       state: ToplevelState,
       cacheKey: Option[(os.Path, Int)] = None
-  ): Unit = {
-    managed.session.storeStateLocal(stateId, state, cacheKey)
-    stateOwnerMap.put(stateId, managed.sessionId)
-    managed.liveStateIds.add(stateId)
-  }
+  ): Unit =
+    stateRegistry.registerState(
+      managed.sessionId,
+      stateId,
+      managed.session,
+      state,
+      cacheKey
+    )
 
-  private def dropStateLocked(managed: ManagedSession, stateId: String): Unit = {
-    val removedOwner = stateOwnerMap.remove(stateId, managed.sessionId)
-    val removedLive = managed.liveStateIds.remove(stateId)
-    if (removedOwner || removedLive)
-      managed.session.dropStateLocal(Seq(stateId))
-  }
+  private def dropStateLocked(managed: ManagedSession, stateId: String): Unit =
+    stateRegistry.dropStateIfOwned(managed.sessionId, stateId, managed.session)
 
-  private def dropAllStatesLocked(managed: ManagedSession): Unit = {
-    val stateIds = managed.liveStateIds.asScala.toList
-    stateIds.foreach(stateId => stateOwnerMap.remove(stateId, managed.sessionId))
-    managed.liveStateIds.clear()
-    managed.session.dropAllStatesLocal()
-  }
+  private def dropAllStatesLocked(managed: ManagedSession): Unit =
+    stateRegistry.dropAllStatesForSession(managed.sessionId, managed.session)
 
   def createSession(
       request: CreateSessionRequest
@@ -276,25 +268,17 @@ class IsaReplService(implicit ec: ExecutionContext)
   ): Future[Empty] =
     futureWrapper {
       val uniqueStateIds = request.stateIds.distinct
-      val stateIdsBySession =
-        uniqueStateIds
-          .flatMap(stateId =>
-            Option(stateOwnerMap.get(stateId)).map(sessionId => stateId -> sessionId)
-          )
-          .groupBy(_._2)
+      val stateIdsBySession = stateRegistry.groupStateIdsByOwner(uniqueStateIds)
 
       uniqueStateIds.foreach { stateId =>
-        if (!stateOwnerMap.containsKey(stateId))
+        if (stateRegistry.ownerOf(stateId).isEmpty)
           log.fine(s"DropState ignored unknown state_id=$stateId")
       }
 
-      stateIdsBySession.foreach { case (sessionId, pairs) =>
+      stateIdsBySession.foreach { case (sessionId, stateIds) =>
         Option(sessionMap.get(sessionId)).foreach { managed =>
           managed.lock.synchronized {
-            pairs.foreach { case (stateId, _) =>
-              if (stateOwnerMap.get(stateId) == sessionId)
-                dropStateLocked(managed, stateId)
-            }
+            stateIds.foreach(stateId => dropStateLocked(managed, stateId))
           }
         }
       }

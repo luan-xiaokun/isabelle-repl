@@ -40,7 +40,7 @@ python/src/isa_repl/
   repl_pb2*.py                     # Auto-generated; do not edit by hand
 ```
 
-**Proof state model.** Every `execute` allocates a fresh UUID and leaves the source state intact. Live state ownership is tracked by the service via a direct `state_id -> session_id` index plus each session's live-state set, so lookups and cleanup are O(1)/O(states in session) rather than cross-session scans.
+**Proof state model.** Every `execute` allocates a fresh UUID and leaves the source state intact. Live state ownership is tracked via a dedicated `StateRegistry` boundary with `state_id -> session_id` as source of truth, while per-session state storage stays local to `IsabelleSession`.
 
 **Two caches, lazy execution.** `load_theory` parses the `.thy` file and stores the resulting transition list (`theoryCache`) — no execution yet. `init_state` looks for the highest already-executed checkpoint ≤ the target line (`initCache: (path, line) -> state_id`), replays only the delta, and caches the new result. Repeated calls to the same line are O(1); nearby lines share work.
 
