@@ -129,12 +129,12 @@ def _parse_state_result(r: pb2.StateResult) -> StateResult:
 # ── Client ────────────────────────────────────────────────────────────────────
 
 
-class IsaReplClient:
-    """gRPC client for the IsabelleREPL service."""
+class IsabelleReplClient:
+    """gRPC client for the IsabelleReplService API."""
 
     def __init__(self, host: str = "localhost", port: int = 50051):
         self._channel = grpc.insecure_channel(f"{host}:{port}")
-        self._stub = pb2_grpc.IsabelleREPLStub(self._channel)
+        self._stub = pb2_grpc.IsabelleReplServiceStub(self._channel)
 
     # ── Session ───────────────────────────────────────────────────────────────
 

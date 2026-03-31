@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class IsabelleREPLStub(object):
+class IsabelleReplServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -35,63 +35,63 @@ class IsabelleREPLStub(object):
             channel: A grpc.Channel.
         """
         self.CreateSession = channel.unary_unary(
-                '/isa.IsabelleREPL/CreateSession',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/CreateSession',
                 request_serializer=repl__pb2.CreateSessionRequest.SerializeToString,
                 response_deserializer=repl__pb2.CreateSessionResponse.FromString,
                 _registered_method=True)
         self.DestroySession = channel.unary_unary(
-                '/isa.IsabelleREPL/DestroySession',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/DestroySession',
                 request_serializer=repl__pb2.SessionRef.SerializeToString,
                 response_deserializer=repl__pb2.Empty.FromString,
                 _registered_method=True)
         self.LoadTheory = channel.unary_unary(
-                '/isa.IsabelleREPL/LoadTheory',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/LoadTheory',
                 request_serializer=repl__pb2.LoadTheoryRequest.SerializeToString,
                 response_deserializer=repl__pb2.LoadTheoryResponse.FromString,
                 _registered_method=True)
         self.ListTheoryCommands = channel.unary_unary(
-                '/isa.IsabelleREPL/ListTheoryCommands',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/ListTheoryCommands',
                 request_serializer=repl__pb2.ListCommandsRequest.SerializeToString,
                 response_deserializer=repl__pb2.ListCommandsResponse.FromString,
                 _registered_method=True)
         self.InitState = channel.unary_unary(
-                '/isa.IsabelleREPL/InitState',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/InitState',
                 request_serializer=repl__pb2.InitStateRequest.SerializeToString,
                 response_deserializer=repl__pb2.InitStateResponse.FromString,
                 _registered_method=True)
         self.DropState = channel.unary_unary(
-                '/isa.IsabelleREPL/DropState',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/DropState',
                 request_serializer=repl__pb2.DropStateRequest.SerializeToString,
                 response_deserializer=repl__pb2.Empty.FromString,
                 _registered_method=True)
         self.DropAllStates = channel.unary_unary(
-                '/isa.IsabelleREPL/DropAllStates',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/DropAllStates',
                 request_serializer=repl__pb2.SessionRef.SerializeToString,
                 response_deserializer=repl__pb2.Empty.FromString,
                 _registered_method=True)
         self.Execute = channel.unary_unary(
-                '/isa.IsabelleREPL/Execute',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/Execute',
                 request_serializer=repl__pb2.ExecuteRequest.SerializeToString,
                 response_deserializer=repl__pb2.StateResult.FromString,
                 _registered_method=True)
         self.ExecuteBatch = channel.unary_unary(
-                '/isa.IsabelleREPL/ExecuteBatch',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/ExecuteBatch',
                 request_serializer=repl__pb2.ExecuteBatchRequest.SerializeToString,
                 response_deserializer=repl__pb2.ExecuteBatchResponse.FromString,
                 _registered_method=True)
         self.RunSledgehammer = channel.unary_unary(
-                '/isa.IsabelleREPL/RunSledgehammer',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/RunSledgehammer',
                 request_serializer=repl__pb2.SledgehammerRequest.SerializeToString,
                 response_deserializer=repl__pb2.SledgehammerResponse.FromString,
                 _registered_method=True)
         self.GetStateInfo = channel.unary_unary(
-                '/isa.IsabelleREPL/GetStateInfo',
+                '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/GetStateInfo',
                 request_serializer=repl__pb2.GetStateInfoRequest.SerializeToString,
                 response_deserializer=repl__pb2.StateInfo.FromString,
                 _registered_method=True)
 
 
-class IsabelleREPLServicer(object):
+class IsabelleReplServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def CreateSession(self, request, context):
@@ -167,7 +167,7 @@ class IsabelleREPLServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_IsabelleREPLServicer_to_server(servicer, server):
+def add_IsabelleReplServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateSession': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateSession,
@@ -226,13 +226,13 @@ def add_IsabelleREPLServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'isa.IsabelleREPL', rpc_method_handlers)
+            'io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('isa.IsabelleREPL', rpc_method_handlers)
+    server.add_registered_method_handlers('io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class IsabelleREPL(object):
+class IsabelleReplService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -249,7 +249,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/CreateSession',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/CreateSession',
             repl__pb2.CreateSessionRequest.SerializeToString,
             repl__pb2.CreateSessionResponse.FromString,
             options,
@@ -276,7 +276,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/DestroySession',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/DestroySession',
             repl__pb2.SessionRef.SerializeToString,
             repl__pb2.Empty.FromString,
             options,
@@ -303,7 +303,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/LoadTheory',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/LoadTheory',
             repl__pb2.LoadTheoryRequest.SerializeToString,
             repl__pb2.LoadTheoryResponse.FromString,
             options,
@@ -330,7 +330,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/ListTheoryCommands',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/ListTheoryCommands',
             repl__pb2.ListCommandsRequest.SerializeToString,
             repl__pb2.ListCommandsResponse.FromString,
             options,
@@ -357,7 +357,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/InitState',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/InitState',
             repl__pb2.InitStateRequest.SerializeToString,
             repl__pb2.InitStateResponse.FromString,
             options,
@@ -384,7 +384,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/DropState',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/DropState',
             repl__pb2.DropStateRequest.SerializeToString,
             repl__pb2.Empty.FromString,
             options,
@@ -411,7 +411,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/DropAllStates',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/DropAllStates',
             repl__pb2.SessionRef.SerializeToString,
             repl__pb2.Empty.FromString,
             options,
@@ -438,7 +438,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/Execute',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/Execute',
             repl__pb2.ExecuteRequest.SerializeToString,
             repl__pb2.StateResult.FromString,
             options,
@@ -465,7 +465,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/ExecuteBatch',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/ExecuteBatch',
             repl__pb2.ExecuteBatchRequest.SerializeToString,
             repl__pb2.ExecuteBatchResponse.FromString,
             options,
@@ -492,7 +492,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/RunSledgehammer',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/RunSledgehammer',
             repl__pb2.SledgehammerRequest.SerializeToString,
             repl__pb2.SledgehammerResponse.FromString,
             options,
@@ -519,7 +519,7 @@ class IsabelleREPL(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/isa.IsabelleREPL/GetStateInfo',
+            '/io.github.luanxiaokun.isabellerepl.v1.IsabelleReplService/GetStateInfo',
             repl__pb2.GetStateInfoRequest.SerializeToString,
             repl__pb2.StateInfo.FromString,
             options,

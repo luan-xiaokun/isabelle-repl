@@ -1,7 +1,7 @@
 syntax = "proto3";
-package isa;
+package io.github.luanxiaokun.isabellerepl.v1;
 
-service IsabelleREPL {
+service IsabelleReplService {
   // ── Session ───────────────────────────────────────────────────
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
   rpc DestroySession(SessionRef)          returns (Empty);

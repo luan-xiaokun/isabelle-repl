@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Protocol
 
-from isabelle_repl import IsaReplClient, StateResult
+from isabelle_repl import IsabelleReplClient, StateResult
 
 
 class RepairHook(Protocol):
@@ -26,7 +26,7 @@ class RepairHook(Protocol):
 
 def execute_and_repair(
     theory_file: Path,
-    client: IsaReplClient,
+    client: IsabelleReplClient,
     session_id: str,
     repair_hook: RepairHook,
     timeout_ms: int = 30000,
@@ -267,7 +267,7 @@ def main():
     if args.dir:
         session_roots = [str(d.expanduser().resolve()) for d in args.dir]
 
-    with IsaReplClient(host=args.host, port=args.port) as client:
+    with IsabelleReplClient(host=args.host, port=args.port) as client:
         print(f"Isabelle path: {isa_path}")
         print(f"Creating session with logic {args.logic}...")
         session_id = client.create_session(

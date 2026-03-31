@@ -1,10 +1,14 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 object IntegrationTags {
   object LocalIntegration
-      extends org.scalatest.Tag("isa.repl.tags.LocalIntegration")
+      extends org.scalatest.Tag(
+        "io.github.luanxiaokun.isabellerepl.tags.LocalIntegration"
+      )
   object AfpHeavyIntegration
-      extends org.scalatest.Tag("isa.repl.tags.AfpHeavyIntegration")
+      extends org.scalatest.Tag(
+        "io.github.luanxiaokun.isabellerepl.tags.AfpHeavyIntegration"
+      )
 }
 
 final case class IntegrationEnv(

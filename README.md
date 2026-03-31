@@ -29,14 +29,14 @@ A Scala gRPC server + Python client that exposes Isabelle as an interactive REPL
 src/main/
   protobuf/repl.proto              # gRPC service definition (source of truth)
   scala/
-    IsaReplServer.scala            # gRPC service impl; session map + entry point
+    IsabelleReplServer.scala       # gRPC service impl; session map + entry point
     SessionBootstrap.scala         # Structured session startup assembly + validation
     IsabelleSession.scala          # One Isabelle process; local theory/state caches
     WorkspaceCatalog.scala         # Unified ROOT/session/import workspace semantics
     TheoryManager.scala            # Theory parsing and Sledgehammer
 
 python/src/isabelle_repl/
-  client.py                        # IsaReplClient — thin gRPC wrapper, returns dataclasses
+  client.py                        # IsabelleReplClient — thin gRPC wrapper, returns dataclasses
   repl_pb2*.py                     # Auto-generated; do not edit by hand
 ```
 
@@ -193,13 +193,13 @@ The example below works against `python/tests/theories/Simple.thy`:
 ```python
 from pathlib import Path
 
-from isabelle_repl import IsaReplClient
+from isabelle_repl import IsabelleReplClient
 
 ISABELLE_PATH = "/home/lxk/Isabelle2025"
 THEORY_PATH = str(Path("python/tests/theories/Simple.thy").absolute())
 WORKING_DIR = str(Path("python/tests").absolute())
 
-client = IsaReplClient(host="localhost", port=50051)
+client = IsabelleReplClient(host="localhost", port=50051)
 
 # ── 1. Create a session (one Isabelle process) ────────────────────────────────
 session_id = client.create_session(
@@ -379,7 +379,7 @@ For non-local-theory states (e.g. proof mode), it is `""`.
 ├── src/main/
 │   ├── protobuf/repl.proto             # gRPC service definition (shared source of truth)
 │   └── scala/
-│       ├── IsaReplServer.scala         # Server entry point + lifecycle/owner orchestration
+│       ├── IsabelleReplServer.scala    # Server entry point + lifecycle/owner orchestration
 │       ├── SessionBootstrap.scala      # Structured startup assembly used by prod/tests
 │       ├── IsabelleSession.scala       # Session: Isabelle process + local caches/state
 │       ├── WorkspaceCatalog.scala      # Unified ROOT/session/import workspace semantics
@@ -389,7 +389,7 @@ For non-local-theory states (e.g. proof mode), it is `""`.
     ├── scripts/gen_proto.sh            # Regenerate Python gRPC stubs from repl.proto
     ├── src/isabelle_repl/
     │   ├── __init__.py
-    │   ├── client.py                   # IsaReplClient public API
+    │   ├── client.py                   # IsabelleReplClient public API
     │   └── repl_pb2*.py               # Auto-generated; do not edit
     └── tests/
         ├── theories/

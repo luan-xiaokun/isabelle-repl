@@ -1,7 +1,7 @@
 from .client import (
     InitStateError,
     InitStateResult,
-    IsaReplClient,
+    IsabelleReplClient,
     StateInfo,
     StateResult,
     TheoryCommand,
@@ -10,7 +10,7 @@ from .client import (
 __all__ = [
     "InitStateError",
     "InitStateResult",
-    "IsaReplClient",
+    "IsabelleReplClient",
     "StateInfo",
     "StateResult",
     "TheoryCommand",

@@ -8,7 +8,7 @@ from isabelle_repl import repl_pb2 as pb2
 from isabelle_repl.client import (
     InitStateError,
     InitStateResult,
-    IsaReplClient,
+    IsabelleReplClient,
     StateResult,
     TheoryCommand,
     _parse_state_result,
@@ -114,10 +114,10 @@ def client_env(monkeypatch):
         "isabelle_repl.client.grpc.insecure_channel", lambda target: channel
     )
     monkeypatch.setattr(
-        "isabelle_repl.client.pb2_grpc.IsabelleREPLStub", lambda ch: stub
+        "isabelle_repl.client.pb2_grpc.IsabelleReplServiceStub", lambda ch: stub
     )
 
-    client = IsaReplClient(host="example.com", port=4242)
+    client = IsabelleReplClient(host="example.com", port=4242)
     return client, stub, channel
 
 

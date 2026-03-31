@@ -17,7 +17,7 @@ import grpc
 import pytest
 from test_env import load_test_env, missing_local_prereqs
 
-from isabelle_repl.client import IsaReplClient
+from isabelle_repl.client import IsabelleReplClient
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ def client():
     """gRPC client shared across the entire test session."""
     _skip_if_local_prereqs_missing(require_afp=False)
     _skip_if_server_unreachable()
-    with IsaReplClient(host=SERVER_HOST, port=SERVER_PORT) as c:
+    with IsabelleReplClient(host=SERVER_HOST, port=SERVER_PORT) as c:
         yield c
 
 

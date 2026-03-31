@@ -6,13 +6,13 @@ def test_import_isabelle_repl():
 
 
 def test_import_client():
-    from isabelle_repl.client import IsaReplClient  # noqa: F401
+    from isabelle_repl.client import IsabelleReplClient  # noqa: F401
 
 
 def test_client_instantiation_no_connect():
-    """IsaReplClient can be instantiated without connecting to a server."""
-    from isabelle_repl.client import IsaReplClient
+    """IsabelleReplClient can be instantiated without connecting to a server."""
+    from isabelle_repl.client import IsabelleReplClient
 
     # Just instantiate — gRPC channels are lazy, no actual connection yet
-    client = IsaReplClient(host="localhost", port=50051)
+    client = IsabelleReplClient(host="localhost", port=50051)
     client.close()

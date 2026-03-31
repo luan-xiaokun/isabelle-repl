@@ -1,4 +1,4 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 sealed trait SessionBootstrapError {
   def message: String

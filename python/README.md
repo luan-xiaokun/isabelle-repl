@@ -30,10 +30,10 @@ pip install -e .
 ## Usage
 
 ```python
-from isabelle_repl import IsaReplClient
+from isabelle_repl import IsabelleReplClient
 
 # The Scala server must already be running on localhost:50051
-with IsaReplClient() as client:
+with IsabelleReplClient() as client:
     session_id = client.create_session(
         isa_path="/path/to/Isabelle2025",
         logic="HOL",

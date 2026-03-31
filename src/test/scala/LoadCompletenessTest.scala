@@ -1,12 +1,14 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 import org.scalatest.funsuite.AnyFunSuite
 
-import isa.repl.{ExecStatus, IntegrationTags}
+import io.github.luanxiaokun.isabellerepl.IntegrationTags
+import io.github.luanxiaokun.isabellerepl.v1.repl.ExecStatus
 
 /** Regression tests for AFP-backed sessions and workspace catalog semantics.
   *
-  * Run with: sbt "testOnly isa.repl.LoadCompletenessTest"
+  * Run with: sbt "testOnly
+  * io.github.luanxiaokun.isabellerepl.LoadCompletenessTest"
   */
 class LoadCompletenessTest extends AnyFunSuite {
 

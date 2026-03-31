@@ -1,4 +1,4 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
@@ -19,7 +19,12 @@ import de.unruh.isabelle.pure.ToplevelState.Modes
 import de.unruh.isabelle.pure.{Theory, ToplevelState, Transition}
 
 import IsabelleSession.Ops
-import isa.repl.{ExecStatus, StateMode, StateResult => ProtoStateResult}
+import io.github.luanxiaokun.isabellerepl.v1.repl.{
+  ExecStatus,
+  InitStateErrorCode,
+  StateMode,
+  StateResult => ProtoStateResult
+}
 
 case class CachedTheory(
     transitions: List[(Transition, String)]
@@ -54,8 +59,8 @@ final case class ComputedSledgehammer(
 
 /** Wraps a single Isabelle process (one logic/heap image).
   *
-  * Lifecycle orchestration lives in [[IsaReplService]]. This class only owns
-  * local caches/state and executes Isabelle operations.
+  * Lifecycle orchestration lives in [[IsabelleReplServiceImpl]]. This class
+  * only owns local caches/state and executes Isabelle operations.
   */
 class IsabelleSession(
     val sessionId: String,

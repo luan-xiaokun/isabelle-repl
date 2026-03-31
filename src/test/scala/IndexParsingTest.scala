@@ -1,4 +1,4 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 import org.scalatest.funsuite.AnyFunSuite
 

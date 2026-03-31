@@ -1,5 +1,5 @@
 """
-Integration tests for IsaReplClient using tests/theories/Simple.thy.
+Integration tests for IsabelleReplClient using tests/theories/Simple.thy.
 
 Covers all major Client API capabilities:
   - load_theory / list_theory_commands

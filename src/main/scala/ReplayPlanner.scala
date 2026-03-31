@@ -1,4 +1,6 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
+
+import io.github.luanxiaokun.isabellerepl.v1.repl.InitStateErrorCode
 
 sealed trait ReplaySelectorError {
   def code: InitStateErrorCode

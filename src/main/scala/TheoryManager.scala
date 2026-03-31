@@ -1,4 +1,4 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 import java.nio.file.{Path, Paths}
 

@@ -1,4 +1,4 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 import io.grpc.Status
 import org.scalatest.funsuite.AnyFunSuite
@@ -86,7 +86,7 @@ class SessionBootstrapTest extends AnyFunSuite {
   }
 
   test("bootstrap errors map to INVALID_ARGUMENT for gRPC layer") {
-    val status = IsaReplService
+    val status = IsabelleReplServiceImpl
       .bootstrapErrorToStatus(
         MissingPath("working directory", os.Path("/tmp/none"))
       )

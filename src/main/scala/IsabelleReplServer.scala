@@ -1,4 +1,4 @@
-package isa.repl
+package io.github.luanxiaokun.isabellerepl
 
 import java.util.UUID
 import java.util.concurrent.{ConcurrentHashMap, Executors}
@@ -14,7 +14,7 @@ import de.unruh.isabelle.pure.ToplevelState
 import io.grpc.{Server, Status, StatusRuntimeException}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
 
-import isa.repl._
+import io.github.luanxiaokun.isabellerepl.v1.repl._
 
 final class ManagedSession(
     val sessionId: String,
@@ -29,10 +29,10 @@ final class ManagedSession(
     closing = true
 }
 
-class IsaReplService(implicit ec: ExecutionContext)
-    extends IsabelleREPLGrpc.IsabelleREPL {
+class IsabelleReplServiceImpl(implicit ec: ExecutionContext)
+    extends IsabelleReplServiceGrpc.IsabelleReplService {
 
-  private val log = Logger.getLogger(classOf[IsaReplService].getName)
+  private val log = Logger.getLogger(classOf[IsabelleReplServiceImpl].getName)
   private val sessionMap = new ConcurrentHashMap[String, ManagedSession]()
   private val stateRegistry = new StateRegistry()
 
@@ -149,7 +149,7 @@ class IsaReplService(implicit ec: ExecutionContext)
           sessionRoots = request.sessionRoots.map(os.Path(_)).toList
         )
         .fold(
-          error => throw IsaReplService.bootstrapErrorToStatus(error),
+          error => throw IsabelleReplServiceImpl.bootstrapErrorToStatus(error),
           identity
         )
       val session = bootstrap.createSession()
@@ -413,7 +413,7 @@ class IsaReplService(implicit ec: ExecutionContext)
     }
 }
 
-object IsaReplService {
+object IsabelleReplServiceImpl {
   def bootstrapErrorToStatus(
       error: SessionBootstrapError
   ): StatusRuntimeException =
@@ -422,9 +422,9 @@ object IsaReplService {
     )
 }
 
-object IsaReplServer {
+object IsabelleReplServer {
   val Port = 50051
-  private val log = Logger.getLogger(IsaReplServer.getClass.getName)
+  private val log = Logger.getLogger(IsabelleReplServer.getClass.getName)
 
   def main(args: Array[String]): Unit = {
     System.setProperty(
@@ -441,10 +441,12 @@ object IsaReplServer {
       ExecutionContext.fromExecutor(isabelleExecutor)
     val server: Server = NettyServerBuilder
       .forPort(Port)
-      .addService(IsabelleREPLGrpc.bindService(new IsaReplService, ec))
+      .addService(
+        IsabelleReplServiceGrpc.bindService(new IsabelleReplServiceImpl, ec)
+      )
       .build()
       .start()
-    log.info(s"IsaReplServer ready — listening on port $Port")
+    log.info(s"IsabelleReplServer ready — listening on port $Port")
 
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       log.info("Shutdown signal received, stopping server")
