@@ -63,9 +63,7 @@ class IsabelleSession(
     val logic: String,
     val workDir: os.Path,
     sessionRoots: List[os.Path],
-    registeredSessionDirectories: List[(String, java.nio.file.Path)],
-    val workDirSessionName: String,
-    theorySourceIndex: TheorySourceIndex
+    workspaceCatalog: WorkspaceCatalog
 ) {
   private val log = Logger.getLogger(classOf[IsabelleSession].getName)
 
@@ -84,14 +82,14 @@ class IsabelleSession(
   log.info(s"Session $sessionId: Isabelle process ready")
 
   locally {
-    if (registeredSessionDirectories.nonEmpty)
+    if (workspaceCatalog.registeredSessionDirectories.nonEmpty)
       Theory.registerSessionDirectoriesNow(
-        registeredSessionDirectories: _*
+        workspaceCatalog.registeredSessionDirectories: _*
       )(isabelle)
   }
 
   private val theoryManager =
-    new TheoryManager(workDirSessionName, theorySourceIndex)
+    new TheoryManager(workspaceCatalog.workDirSessionName, workspaceCatalog)
 
   val theoryCache = new ConcurrentHashMap[os.Path, CachedTheory]()
   val stateMap = new ConcurrentHashMap[String, ToplevelState]()
@@ -167,7 +165,8 @@ class IsabelleSession(
 
   def hasStateLocal(stateId: String): Boolean = stateMap.containsKey(stateId)
 
-  /** Local invariant: init-cache entries only point at still-live local states. */
+  /** Local invariant: init-cache entries only point at still-live local states.
+    */
   def storeStateLocal(
       stateId: String,
       state: ToplevelState,
@@ -207,7 +206,7 @@ class IsabelleSession(
 
     val targetLine =
       ReplayPlanner.resolveTargetLine(commandsWithLines, position) match {
-        case Right(line) => line
+        case Right(line)         => line
         case Left(selectorError) =>
           return ComputedInitFailure(
             failedLine = 0,
@@ -219,7 +218,9 @@ class IsabelleSession(
       }
 
     val bestCache =
-      initCache.entrySet().asScala
+      initCache
+        .entrySet()
+        .asScala
         .collect {
           case e if e.getKey._1 == thyPath && e.getKey._2 <= targetLine =>
             Option(stateMap.get(e.getValue)).map(st => (e.getKey._2, st))
@@ -258,7 +259,9 @@ class IsabelleSession(
           val code =
             e match {
               case ml: IsabelleMLException
-                  if Option(ml.getMessage).exists(_.contains("Timeout after")) =>
+                  if Option(ml.getMessage).exists(
+                    _.contains("Timeout after")
+                  ) =>
                 InitStateErrorCode.INIT_STATE_TIMEOUT
               case _ =>
                 InitStateErrorCode.INIT_STATE_EXECUTION_FAILED

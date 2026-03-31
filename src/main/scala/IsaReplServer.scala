@@ -19,8 +19,7 @@ import isa.repl._
 final class ManagedSession(
     val sessionId: String,
     val session: IsabelleSession,
-    val sessionRootIndex: SessionRootIndex,
-    val theorySourceIndex: TheorySourceIndex
+    val workspaceCatalog: WorkspaceCatalog
 ) {
   val lock: AnyRef = new AnyRef
   private var closing = false
@@ -102,7 +101,9 @@ class IsaReplService(implicit ec: ExecutionContext)
       stateNotFound(stateId)
   }
 
-  private def withManagedState[T](stateId: String)(f: ManagedSession => T): T = {
+  private def withManagedState[T](
+      stateId: String
+  )(f: ManagedSession => T): T = {
     val ownerSessionId = stateRegistry.ownerOf(stateId).getOrElse {
       stateNotFound(stateId)
     }
@@ -142,24 +143,31 @@ class IsaReplService(implicit ec: ExecutionContext)
       val sessionId = UUID.randomUUID().toString
       val workDir = os.Path(request.workingDirectory)
       val sessionRoots = request.sessionRoots.map(os.Path(_)).toList
-      val sessionRootIndex =
-        SessionRootIndex.build(request.logic, workDir, sessionRoots)
-      val theorySourceIndex =
-        TheorySourceIndex.build(workDir, sessionRootIndex.workDirSessionName)
+      val workspaceCatalog =
+        WorkspaceCatalog
+          .build(request.logic, workDir, sessionRoots)
+          .fold(
+            error =>
+              throw new StatusRuntimeException(
+                Status.INVALID_ARGUMENT.withDescription(error.message)
+              ),
+            identity
+          )
       val session = new IsabelleSession(
         sessionId = sessionId,
         isaPath = os.Path(request.isaPath),
         logic = request.logic,
         workDir = workDir,
         sessionRoots = sessionRoots,
-        registeredSessionDirectories =
-          sessionRootIndex.registeredSessionDirectories,
-        workDirSessionName = sessionRootIndex.workDirSessionName,
-        theorySourceIndex = theorySourceIndex
+        workspaceCatalog = workspaceCatalog
       )
       sessionMap.put(
         sessionId,
-        new ManagedSession(sessionId, session, sessionRootIndex, theorySourceIndex)
+        new ManagedSession(
+          sessionId,
+          session,
+          workspaceCatalog
+        )
       )
       CreateSessionResponse(sessionId = sessionId)
     }
@@ -184,7 +192,8 @@ class IsaReplService(implicit ec: ExecutionContext)
   ): Future[LoadTheoryResponse] =
     futureWrapper {
       withActiveManagedSession(request.sessionId) { managed =>
-        val commandCount = managed.session.loadTheory(os.Path(request.theoryPath))
+        val commandCount =
+          managed.session.loadTheory(os.Path(request.theoryPath))
         LoadTheoryResponse(
           theoryPath = request.theoryPath,
           commandCount = commandCount
@@ -401,7 +410,10 @@ class IsaReplService(implicit ec: ExecutionContext)
     futureWrapper {
       withManagedState(request.stateId) { managed =>
         val (mode, proofLevel, text) =
-          managed.session.getStateInfoLocal(request.stateId, request.includeText)
+          managed.session.getStateInfoLocal(
+            request.stateId,
+            request.includeText
+          )
         StateInfo(
           stateId = request.stateId,
           mode = mode,

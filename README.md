@@ -31,8 +31,7 @@ src/main/
   scala/
     IsaReplServer.scala            # gRPC service impl; session map + entry point
     IsabelleSession.scala          # One Isabelle process; local theory/state caches
-    SessionRootIndex.scala         # ROOT scanning and session directory discovery
-    TheorySourceIndex.scala        # Theory source/import mapping for workdirs
+    WorkspaceCatalog.scala         # Unified ROOT/session/import workspace semantics
     TheoryManager.scala            # Theory parsing and Sledgehammer
 
 python/src/isa_repl/
@@ -376,8 +375,7 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 │   └── scala/
 │       ├── IsaReplServer.scala         # Server entry point + lifecycle/owner orchestration
 │       ├── IsabelleSession.scala       # Session: Isabelle process + local caches/state
-│       ├── SessionRootIndex.scala      # ROOT scanning and session directory indexing
-│       ├── TheorySourceIndex.scala     # Theory source/import resolution for a workdir
+│       ├── WorkspaceCatalog.scala      # Unified ROOT/session/import workspace semantics
 │       └── TheoryManager.scala         # Theory parsing and Sledgehammer
 └── python/
     ├── pyproject.toml                  # Package metadata (uv / pip)

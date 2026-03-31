@@ -40,7 +40,7 @@ object ProofCommands {
 
 class TheoryManager(
     val sessionName: String,
-    theorySourceIndex: TheorySourceIndex
+    workspaceCatalog: WorkspaceCatalog
 )(implicit isabelle: Isabelle) {
 
   def getThyTransitions(
@@ -61,13 +61,17 @@ class TheoryManager(
   def beginTheory(text: String, path: os.Path): Theory = {
     val header = TheoryHeader.read(text)
     val masterDir = Option(path.toNIO.getParent).getOrElse(Paths.get(""))
+    val imports = workspaceCatalog
+      .resolveHeaderImports(sessionName, header.imports)
+      .fold(
+        error => throw new IllegalArgumentException(error.message),
+        identity
+      )
     Ops
       .begin_theory(
         masterDir,
         header,
-        header.imports
-          .map(imp => theorySourceIndex.resolveImport(sessionName, imp))
-          .map(Theory.apply)
+        imports.map(Theory.apply)
       )
       .force
       .retrieveNow

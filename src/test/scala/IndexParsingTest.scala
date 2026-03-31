@@ -10,8 +10,10 @@ class IndexParsingTest extends AnyFunSuite {
     finally os.remove.all(dir)
   }
 
-  test("SessionRootIndex.build collects top-level and nested ROOT sessions once") {
-    withTempDir("session-root-index-") { root =>
+  test(
+    "WorkspaceCatalog.build collects top-level and nested ROOT sessions once"
+  ) {
+    withTempDir("workspace-catalog-root-index-") { root =>
       os.write(
         root / "ROOT",
         """session "Base" = HOL +
@@ -27,17 +29,21 @@ class IndexParsingTest extends AnyFunSuite {
         """session "Nested" = HOL +""".stripMargin
       )
 
-      val index = SessionRootIndex.build("HOL", root / "Nested", List(root))
-      val dirs = index.registeredSessionDirectories.groupMap(_._1)(_._2)
+      val catalog = WorkspaceCatalog
+        .build("HOL", root / "Nested", List(root))
+        .fold(error => fail(error.message), identity)
+      val dirs = catalog.registeredSessionDirectories.groupMap(_._1)(_._2)
 
-      assert(index.workDirSessionName == "Nested")
+      assert(catalog.workDirSessionName == "Nested")
       assert(dirs("Base").size == 1)
       assert(dirs("Nested").distinct.size == 1)
     }
   }
 
-  test("SessionRootIndex.build strips ROOT comments when deriving workdir session") {
-    withTempDir("session-root-comments-") { workDir =>
+  test(
+    "WorkspaceCatalog.build strips ROOT comments when deriving workdir session"
+  ) {
+    withTempDir("workspace-catalog-root-comments-") { workDir =>
       os.write(
         workDir / "ROOT",
         """(* session "Ignored" = HOL + *)
@@ -45,26 +51,31 @@ class IndexParsingTest extends AnyFunSuite {
           |""".stripMargin
       )
 
-      val index = SessionRootIndex.build("HOL", workDir, List(workDir))
+      val catalog = WorkspaceCatalog
+        .build("HOL", workDir, List(workDir))
+        .fold(error => fail(error.message), identity)
 
-      assert(index.workDirSessionName == "Visible")
-      assert(index.registeredSessionDirectories.map(_._1) == List("Visible"))
+      assert(catalog.workDirSessionName == "Visible")
+      assert(catalog.registeredSessionDirectories.map(_._1) == List("Visible"))
     }
   }
 
-  test("SessionRootIndex.build falls back to directory name without ROOT file") {
-    withTempDir("session-root-fallback-") { root =>
+  test(
+    "WorkspaceCatalog.build falls back to directory name without ROOT file"
+  ) {
+    withTempDir("workspace-catalog-root-fallback-") { root =>
       os.makeDir(root / "Query_Optimization")
 
-      val index =
-        SessionRootIndex.build("HOL", root / "Query_Optimization", List(root))
+      val catalog = WorkspaceCatalog
+        .build("HOL", root / "Query_Optimization", List(root))
+        .fold(error => fail(error.message), identity)
 
-      assert(index.workDirSessionName == "Query_Optimization")
+      assert(catalog.workDirSessionName == "Query_Optimization")
     }
   }
 
-  test("TheorySourceIndex.build maps directories blocks to the owning session") {
-    withTempDir("theory-source-directories-") { workDir =>
+  test("WorkspaceCatalog.build maps directories blocks to the owning session") {
+    withTempDir("workspace-catalog-directories-") { workDir =>
       os.makeDir.all(workDir / "Subdir" / "Nested")
       os.write(
         workDir / "ROOT",
@@ -74,44 +85,87 @@ class IndexParsingTest extends AnyFunSuite {
           |""".stripMargin
       )
       os.write(workDir / "Top.thy", "theory Top imports Main begin end")
-      os.write(workDir / "Subdir" / "Inner.thy", "theory Inner imports Main begin end")
+      os.write(
+        workDir / "Subdir" / "Inner.thy",
+        "theory Inner imports Main begin end"
+      )
       os.write(
         workDir / "Subdir" / "Nested" / "Deep.thy",
         "theory Deep imports Main begin end"
       )
 
-      val index = TheorySourceIndex.build(workDir, "Demo")
+      val catalog = WorkspaceCatalog
+        .build("HOL", workDir, List(workDir))
+        .fold(error => fail(error.message), identity)
 
-      assert(index.resolveImport("Demo", "Top") == "Demo.Top")
-      assert(index.resolveImport("Demo", "Inner") == "Demo.Inner")
-      assert(index.resolveImport("Demo", "Deep") == "Demo.Deep")
+      assert(catalog.resolveImport("Demo", "Top") == Right("Demo.Top"))
+      assert(catalog.resolveImport("Demo", "Inner") == Right("Demo.Inner"))
+      assert(catalog.resolveImport("Demo", "Deep") == Right("Demo.Deep"))
     }
   }
 
-  test("TheorySourceIndex.resolveImport keeps qualified imports and rewrites HOL-Library") {
-    val index = TheorySourceIndex(Map("Demo" -> Nil))
-
-    assert(index.resolveImport("Demo", "Other.Session") == "Other.Session")
-    assert(
-      index.resolveImport("Demo", "~~/src/HOL/Library/FuncSet") ==
-        "HOL-Library.FuncSet"
+  test(
+    "WorkspaceCatalog.resolveImport keeps qualified imports and rewrites HOL-Library"
+  ) {
+    val catalog = WorkspaceCatalog(
+      registeredSessionDirectories = Nil,
+      workDirSessionName = "Demo",
+      sessionFilesMap = Map("Demo" -> Nil)
     )
-    assertThrows[Exception] {
-      index.resolveImport("Demo", "~~/src/HOL/Main")
-    }
+
+    assert(
+      catalog.resolveImport("Demo", "Other.Session") == Right("Other.Session")
+    )
+    assert(
+      catalog.resolveImport("Demo", "~~/src/HOL/Library/FuncSet") ==
+        Right("HOL-Library.FuncSet")
+    )
+    assert(
+      catalog.resolveImport("Demo", "~~/src/HOL/Main") ==
+        Left(UnsupportedImport("~~/src/HOL/Main"))
+    )
   }
 
-  test("TheorySourceIndex.build falls back to direct .thy files without ROOT") {
-    withTempDir("theory-source-fallback-") { workDir =>
+  test("WorkspaceCatalog.build falls back to direct .thy files without ROOT") {
+    withTempDir("workspace-catalog-fallback-") { workDir =>
       os.write(workDir / "Local.thy", "theory Local imports Main begin end")
       os.write(workDir / "README.txt", "ignored")
       os.makeDir(workDir / "Nested")
-      os.write(workDir / "Nested" / "Hidden.thy", "theory Hidden imports Main begin end")
+      os.write(
+        workDir / "Nested" / "Hidden.thy",
+        "theory Hidden imports Main begin end"
+      )
 
-      val index = TheorySourceIndex.build(workDir, "Scratch")
+      val catalog = WorkspaceCatalog
+        .build("HOL", workDir, List(workDir))
+        .fold(error => fail(error.message), identity)
+      val sessionName = catalog.workDirSessionName
 
-      assert(index.resolveImport("Scratch", "Local") == "Scratch.Local")
-      assert(index.resolveImport("Scratch", "Hidden") == "Hidden")
+      assert(
+        catalog.resolveImport(sessionName, "Local") == Right(
+          s"$sessionName.Local"
+        )
+      )
+      assert(catalog.resolveImport(sessionName, "Hidden") == Right("Hidden"))
+    }
+  }
+
+  test("WorkspaceCatalog.resolveImport returns structured ambiguity errors") {
+    val thyA = os.Path("/tmp/A/Foo.thy")
+    val thyB = os.Path("/tmp/B/Foo.thy")
+    val catalog = WorkspaceCatalog(
+      registeredSessionDirectories = Nil,
+      workDirSessionName = "Demo",
+      sessionFilesMap = Map("Demo" -> List(thyA, thyB))
+    )
+
+    val result = catalog.resolveImport("Demo", "Foo")
+    result match {
+      case Left(err: AmbiguousTheory) =>
+        assert(err.sessionName == "Demo")
+        assert(err.theoryName == "Foo")
+      case other =>
+        fail(s"Expected AmbiguousTheory, got: $other")
     }
   }
 }
