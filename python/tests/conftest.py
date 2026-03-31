@@ -7,8 +7,8 @@ Prerequisites:
   - AFP 2025 checked out at AFP_PATH (default: /home/lxk/repositories/afp-2025/thys)
 
 Environment overrides:
-  ISA_REPL_HOST   gRPC server host  (default: localhost)
-  ISA_REPL_PORT   gRPC server port  (default: 50051)
+  ISABELLE_REPL_HOST   gRPC server host  (default: localhost)
+  ISABELLE_REPL_PORT   gRPC server port  (default: 50051)
   ISABELLE_PATH   Isabelle installation root
   AFP_PATH        AFP thys/ root
 """
@@ -17,7 +17,7 @@ import grpc
 import pytest
 from test_env import load_test_env, missing_local_prereqs
 
-from isa_repl.client import IsaReplClient
+from isabelle_repl.client import IsaReplClient
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 

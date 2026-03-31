@@ -35,7 +35,7 @@ src/main/
     WorkspaceCatalog.scala         # Unified ROOT/session/import workspace semantics
     TheoryManager.scala            # Theory parsing and Sledgehammer
 
-python/src/isa_repl/
+python/src/isabelle_repl/
   client.py                        # IsaReplClient — thin gRPC wrapper, returns dataclasses
   repl_pb2*.py                     # Auto-generated; do not edit by hand
 ```
@@ -175,8 +175,8 @@ Environment variables (all optional, defaults shown):
 
 | Variable | Default |
 |----------|---------|
-| `ISA_REPL_HOST` | `localhost` |
-| `ISA_REPL_PORT` | `50051` |
+| `ISABELLE_REPL_HOST` | `localhost` |
+| `ISABELLE_REPL_PORT` | `50051` |
 | `ISABELLE_PATH` | `/home/lxk/Isabelle2025` |
 | `AFP_PATH` | `/home/lxk/repositories/afp-2025/thys` |
 
@@ -193,7 +193,7 @@ The example below works against `python/tests/theories/Simple.thy`:
 ```python
 from pathlib import Path
 
-from isa_repl import IsaReplClient
+from isabelle_repl import IsaReplClient
 
 ISABELLE_PATH = "/home/lxk/Isabelle2025"
 THEORY_PATH = str(Path("python/tests/theories/Simple.thy").absolute())
@@ -382,7 +382,7 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 └── python/
     ├── pyproject.toml                  # Package metadata (uv / pip)
     ├── scripts/gen_proto.sh            # Regenerate Python gRPC stubs from repl.proto
-    ├── src/isa_repl/
+    ├── src/isabelle_repl/
     │   ├── __init__.py
     │   ├── client.py                   # IsaReplClient public API
     │   └── repl_pb2*.py               # Auto-generated; do not edit

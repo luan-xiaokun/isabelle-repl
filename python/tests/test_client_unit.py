@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from isa_repl import repl_pb2 as pb2
-from isa_repl.client import (
+from isabelle_repl import repl_pb2 as pb2
+from isabelle_repl.client import (
     InitStateError,
     InitStateResult,
     IsaReplClient,
@@ -110,8 +110,12 @@ def client_env(monkeypatch):
     channel = _FakeChannel()
     stub = _RecordingStub()
 
-    monkeypatch.setattr("isa_repl.client.grpc.insecure_channel", lambda target: channel)
-    monkeypatch.setattr("isa_repl.client.pb2_grpc.IsabelleREPLStub", lambda ch: stub)
+    monkeypatch.setattr(
+        "isabelle_repl.client.grpc.insecure_channel", lambda target: channel
+    )
+    monkeypatch.setattr(
+        "isabelle_repl.client.pb2_grpc.IsabelleREPLStub", lambda ch: stub
+    )
 
     client = IsaReplClient(host="example.com", port=4242)
     return client, stub, channel

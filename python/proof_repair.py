@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Protocol
 
-from isa_repl import IsaReplClient, StateResult
+from isabelle_repl import IsaReplClient, StateResult
 
 
 class RepairHook(Protocol):
@@ -82,8 +82,10 @@ def execute_and_repair(
 
         # we can first try sledgehammer to fix the proof
         # TODO: this seems only useful for "by ..." terminal proof commands
-        # how to handle non-terminal proof commands? e.g., "proof - ..." and "apply ..."?
-        # if sledgehammer succeeds, we need to skip the remaining original proof commands
+        # how to handle non-terminal proof commands?
+        # e.g., "proof - ..." and "apply ..."?
+        # if sledgehammer succeeds, we need to skip
+        # the remaining original proof commands
         if try_sledgehammer and state.mode == "PROOF":
             found, tactic, repair_state = client.run_sledgehammer(
                 source_state_id=state.state_id,
@@ -134,17 +136,21 @@ def execute_and_repair(
                 # proof and still needs to work together with C to discharge the proof
                 # goal, then we should not skip C.
                 # I think the key points here are twofold:
-                # (1) what's the aim of a single repair attempt? is it to fix the current
+                # (1) what's the aim of a single repair attempt?
+                #     is it to fix the current
                 #     command so no error is raised and it works together with the other
                 #     commands to discharge the proof goal, or is it to give a complete
                 #     proof for the current proof goal, even though there may be some
-                #     remaining original proof commands that are now redundant and should
+                #     remaining original proof commands
+                #     that are now redundant and should
                 #     be skipped?
-                # (2) one way to check if we should skip the next command is to check the
-                #     proof level before and after executing the repaired command. if the
-                #     proof level decreases, then it means the repaired command itself can
+                # (2) one way to check if we should skip the next command
+                #     is to check the proof level before and after
+                #     executing the repaired command. if the proof level
+                #     decreases, then it means the repaired command itself can
                 #     discharge the current proof goal, and the following original proof
-                #     commands that open no new proof goal but are just mean to discharge
+                #     commands that open no new proof goal
+                #     but are just mean to discharge
                 #     a proof goal should be skipped (how hard is it to check this?) if
                 #     the proof level does not decrease or even increases, then it means
                 #     that either we are fixing something that is supposed to open a new
@@ -235,7 +241,10 @@ def main():
         "--working-dir",
         type=Path,
         default=None,
-        help="Working directory for the Isabelle process (default: directory of the theory file)",
+        help=(
+            "Working directory for the Isabelle process "
+            "(default: directory of the theory file)"
+        ),
     )
     args = parser.parse_args()
 
@@ -248,7 +257,8 @@ def main():
     isa_path = args.isa_path or os.getenv("ISA_PATH")
     if not isa_path:
         print(
-            "Error: Isabelle path must be specified via --isa-path or ISA_PATH environment variable"
+            "Error: Isabelle path must be specified via --isa-path "
+            "or ISA_PATH environment variable"
         )
         return 1
     isa_path = str(isa_path)

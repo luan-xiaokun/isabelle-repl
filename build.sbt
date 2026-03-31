@@ -2,6 +2,7 @@ import scala.language.postfixOps
 
 ThisBuild / version := "0.1.0"
 ThisBuild / scalaVersion := "2.13.18"
+ThisBuild / organization := "io.github.luan-xiaokun"
 
 Compile / PB.targets := Seq(
   scalapb.gen(grpc = true) -> (Compile / sourceManaged).value / "scalapb"

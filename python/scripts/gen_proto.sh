@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PROTO_DIR="$REPO_ROOT/src/main/protobuf"
-OUT_DIR="$REPO_ROOT/python/src/isa_repl"
+OUT_DIR="$REPO_ROOT/python/src/isabelle_repl"
 
 echo "Generating Python gRPC stubs from $PROTO_DIR/repl.proto"
 echo "Output directory: $OUT_DIR"
@@ -19,7 +19,7 @@ python -m grpc_tools.protoc \
 python - <<'PY'
 from pathlib import Path
 
-path = Path("src/isa_repl/repl_pb2_grpc.py")
+path = Path("src/isabelle_repl/repl_pb2_grpc.py")
 text = path.read_text()
 text = text.replace(
     "import repl_pb2 as repl__pb2",

@@ -1,4 +1,4 @@
-# isa-repl Python Client
+# isabelle-repl Python Client
 
 Python client SDK for the [Isabelle REPL gRPC server](../README.md).
 
@@ -30,7 +30,7 @@ pip install -e .
 ## Usage
 
 ```python
-from isa_repl import IsaReplClient
+from isabelle_repl import IsaReplClient
 
 # The Scala server must already be running on localhost:50051
 with IsaReplClient() as client:

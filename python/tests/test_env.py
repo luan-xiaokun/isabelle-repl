@@ -26,8 +26,8 @@ def load_test_env() -> RuntimeEnv:
         os.environ.get("AFP_PATH", "/home/lxk/repositories/afp-2025/thys")
     ).expanduser()
     return RuntimeEnv(
-        server_host=os.environ.get("ISA_REPL_HOST", "localhost"),
-        server_port=int(os.environ.get("ISA_REPL_PORT", "50051")),
+        server_host=os.environ.get("ISABELLE_REPL_HOST", "localhost"),
+        server_port=int(os.environ.get("ISABELLE_REPL_PORT", "50051")),
         isabelle_path=isabelle_path,
         afp_path=afp_path,
         theories_dir=base_dir / "theories",

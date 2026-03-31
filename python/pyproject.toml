@@ -1,5 +1,5 @@
 [project]
-name = "isa-repl"
+name = "isabelle-repl"
 version = "0.1.0"
 description = "Python client SDK for the Isabelle REPL gRPC server"
 readme = "README.md"
@@ -11,7 +11,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/isa_repl"]
+packages = ["src/isabelle_repl"]
 
 [dependency-groups]
 dev = [
@@ -31,23 +31,23 @@ markers = [
     "integration_afp_heavy: AFP-backed integration tests that require AFP checkout",
 ]
 addopts = [
-    "--cov=isa_repl",
+    "--cov=isabelle_repl",
     "--cov-report=term-missing",
     "--cov-branch",
     "-ra",
 ]
 
 [tool.coverage.run]
-omit = ["src/isa_repl/repl_pb2.py", "src/isa_repl/repl_pb2_grpc.py"]
+omit = ["src/isabelle_repl/repl_pb2.py", "src/isabelle_repl/repl_pb2_grpc.py"]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 88
 force-exclude = true
 extend-exclude = [
-    "src/isa_repl/repl_pb2.py",
-    "src/isa_repl/repl_pb2.pyi",
-    "src/isa_repl/repl_pb2_grpc.py",
+    "src/isabelle_repl/repl_pb2.py",
+    "src/isabelle_repl/repl_pb2.pyi",
+    "src/isabelle_repl/repl_pb2_grpc.py",
 ]
 
 [tool.ruff.lint]
