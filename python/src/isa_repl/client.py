@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 import grpc
 
-logger = logging.getLogger(__name__)
-
 from . import repl_pb2 as pb2
 from . import repl_pb2_grpc as pb2_grpc
+
+logger = logging.getLogger(__name__)
 
 
 # ── Result dataclasses ────────────────────────────────────────────────────────
@@ -42,6 +42,9 @@ class StateInfo:
     mode: str
     proof_level: int
     proof_state_text: str
+    local_theory_desc: str = (
+        ""  # Reserved for future local theory descriptions; currently unimplemented.
+    )
 
 
 @dataclass
@@ -49,7 +52,6 @@ class TheoryCommand:
     text: str
     kind: str
     line: int
-    column: int
 
 
 @dataclass
@@ -76,7 +78,8 @@ class InitStateResult:
         if self.success is not None:
             return self.success
         raise RuntimeError(
-            f"init_state failed at line {self.error.failed_line}: {self.error.error_msg}"
+            f"init_state failed at line {self.error.failed_line}: "
+            + self.error.error_msg
         )
 
 
@@ -173,8 +176,7 @@ class IsaReplClient:
             )
         )
         return [
-            TheoryCommand(text=c.text, kind=c.kind, line=c.line, column=c.column)
-            for c in resp.commands
+            TheoryCommand(text=c.text, kind=c.kind, line=c.line) for c in resp.commands
         ]
 
     # ── ProofState lifecycle ──────────────────────────────────────────────────
@@ -258,8 +260,7 @@ class IsaReplClient:
         header = next((c for c in cmds if c.kind == "theory"), None)
         if header is None:
             raise ValueError(
-                f"No 'theory' command found in {theory_path}; "
-                "is the theory file valid?"
+                f"No 'theory' command found in {theory_path}; is the theory file valid?"
             )
         return self.init_state(
             session_id,
@@ -308,7 +309,12 @@ class IsaReplClient:
         timeout_ms: int = 30000,
         drop_failed: bool = False,
     ) -> list[StateResult]:
-        """Execute multiple tactics in parallel. Returns results parallel to tactics."""
+        """Execute multiple tactics in order.
+
+        The server currently evaluates batch candidates sequentially to keep
+        session-local lifecycle semantics strongly consistent. Results still
+        align 1:1 with the input tactics list.
+        """
         logger.debug("ExecuteBatch: %d tactics", len(tactics))
         resp = self._stub.ExecuteBatch(
             pb2.ExecuteBatchRequest(
@@ -333,7 +339,7 @@ class IsaReplClient:
         source_state_id: str,
         timeout_ms: int = 30000,
         sledgehammer_timeout_ms: int = 30000,
-    ):
+    ) -> tuple[bool, str, StateResult | None]:
         """Run Sledgehammer. Returns (found, tactic, state_result_or_None)."""
         logger.debug(
             "RunSledgehammer (timeout=%dms, sh_timeout=%dms)",
@@ -372,6 +378,7 @@ class IsaReplClient:
             mode=_STATE_MODE_NAMES.get(resp.mode, str(resp.mode)),
             proof_level=resp.proof_level,
             proof_state_text=resp.proof_state_text,
+            local_theory_desc=resp.local_theory_desc,
         )
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Protocol
 
-from isa_repl import IsaReplClient, StateResult, TheoryCommand
+from isa_repl import IsaReplClient, StateResult
 
 
 class RepairHook(Protocol):

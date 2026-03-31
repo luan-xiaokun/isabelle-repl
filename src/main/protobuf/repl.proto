@@ -78,7 +78,7 @@ message TheoryCommand {
   string text   = 1;  // full command source text
   string kind   = 2;  // "lemma", "theorem", "definition", ...
   int32  line   = 3;
-  int32  column = 4;
+  reserved 4;         // removed: column was declared but never populated
 }
 message ListCommandsResponse {
   repeated TheoryCommand commands = 1;
@@ -172,7 +172,8 @@ message StateInfo {
   StateMode mode              = 2;
   int32     proof_level       = 3;
   string    proof_state_text  = 4;  // only when include_text=true
-  string    local_theory_desc = 5;  // e.g. "locale foo" when in LocalTheory mode
+  string    local_theory_desc = 5;  // Intended to describe the active local theory, e.g. "locale foo".
+                                     // Currently unimplemented: the server returns an empty string.
 }
 
 message Empty {}

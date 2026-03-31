@@ -82,16 +82,14 @@ class ListCommandsRequest(_message.Message):
     def __init__(self, session_id: _Optional[str] = ..., theory_path: _Optional[str] = ..., only_proof_stmts: bool = ...) -> None: ...
 
 class TheoryCommand(_message.Message):
-    __slots__ = ("text", "kind", "line", "column")
+    __slots__ = ("text", "kind", "line")
     TEXT_FIELD_NUMBER: _ClassVar[int]
     KIND_FIELD_NUMBER: _ClassVar[int]
     LINE_FIELD_NUMBER: _ClassVar[int]
-    COLUMN_FIELD_NUMBER: _ClassVar[int]
     text: str
     kind: str
     line: int
-    column: int
-    def __init__(self, text: _Optional[str] = ..., kind: _Optional[str] = ..., line: _Optional[int] = ..., column: _Optional[int] = ...) -> None: ...
+    def __init__(self, text: _Optional[str] = ..., kind: _Optional[str] = ..., line: _Optional[int] = ...) -> None: ...
 
 class ListCommandsResponse(_message.Message):
     __slots__ = ("commands",)
