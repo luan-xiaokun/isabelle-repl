@@ -21,6 +21,15 @@ class StateMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LOCAL_THEORY: _ClassVar[StateMode]
     PROOF: _ClassVar[StateMode]
     SKIPPED_PROOF: _ClassVar[StateMode]
+
+class InitStateErrorCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    INIT_STATE_ERROR_UNKNOWN: _ClassVar[InitStateErrorCode]
+    INIT_STATE_NOT_FOUND: _ClassVar[InitStateErrorCode]
+    INIT_STATE_AMBIGUOUS: _ClassVar[InitStateErrorCode]
+    INIT_STATE_OCCURRENCE_OOR: _ClassVar[InitStateErrorCode]
+    INIT_STATE_EXECUTION_FAILED: _ClassVar[InitStateErrorCode]
+    INIT_STATE_TIMEOUT: _ClassVar[InitStateErrorCode]
 SUCCESS: ExecStatus
 PROOF_COMPLETE: ExecStatus
 ERROR: ExecStatus
@@ -30,6 +39,12 @@ THEORY: StateMode
 LOCAL_THEORY: StateMode
 PROOF: StateMode
 SKIPPED_PROOF: StateMode
+INIT_STATE_ERROR_UNKNOWN: InitStateErrorCode
+INIT_STATE_NOT_FOUND: InitStateErrorCode
+INIT_STATE_AMBIGUOUS: InitStateErrorCode
+INIT_STATE_OCCURRENCE_OOR: InitStateErrorCode
+INIT_STATE_EXECUTION_FAILED: InitStateErrorCode
+INIT_STATE_TIMEOUT: InitStateErrorCode
 
 class SessionRef(_message.Message):
     __slots__ = ("session_id",)
@@ -128,14 +143,18 @@ class InitStateResponse(_message.Message):
     def __init__(self, success: _Optional[_Union[StateResult, _Mapping]] = ..., error: _Optional[_Union[InitStateError, _Mapping]] = ...) -> None: ...
 
 class InitStateError(_message.Message):
-    __slots__ = ("failed_line", "error_msg", "last_success")
+    __slots__ = ("failed_line", "error_msg", "last_success", "code", "candidate_lines")
     FAILED_LINE_FIELD_NUMBER: _ClassVar[int]
     ERROR_MSG_FIELD_NUMBER: _ClassVar[int]
     LAST_SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    CODE_FIELD_NUMBER: _ClassVar[int]
+    CANDIDATE_LINES_FIELD_NUMBER: _ClassVar[int]
     failed_line: int
     error_msg: str
     last_success: StateResult
-    def __init__(self, failed_line: _Optional[int] = ..., error_msg: _Optional[str] = ..., last_success: _Optional[_Union[StateResult, _Mapping]] = ...) -> None: ...
+    code: InitStateErrorCode
+    candidate_lines: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, failed_line: _Optional[int] = ..., error_msg: _Optional[str] = ..., last_success: _Optional[_Union[StateResult, _Mapping]] = ..., code: _Optional[_Union[InitStateErrorCode, str]] = ..., candidate_lines: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class DropStateRequest(_message.Message):
     __slots__ = ("state_ids",)

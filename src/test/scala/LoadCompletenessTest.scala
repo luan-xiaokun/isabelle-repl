@@ -131,7 +131,7 @@ class LoadCompletenessTest extends AnyFunSuite {
             execResult.status == ExecStatus.PROOF_COMPLETE,
             s"Expected PROOF_COMPLETE, got ${execResult.status}: ${execResult.errorMsg}"
           )
-        case ComputedInitFailure(failedLine, errorMsg, _) =>
+        case ComputedInitFailure(failedLine, errorMsg, _, _, _) =>
           fail(s"computeInitState failed at line $failedLine: $errorMsg")
       }
     } finally {

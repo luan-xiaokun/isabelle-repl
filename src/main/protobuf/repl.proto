@@ -43,6 +43,15 @@ enum StateMode {
   SKIPPED_PROOF = 4;
 }
 
+enum InitStateErrorCode {
+  INIT_STATE_ERROR_UNKNOWN       = 0;
+  INIT_STATE_NOT_FOUND           = 1;  // selector matched no command
+  INIT_STATE_AMBIGUOUS           = 2;  // selector matched multiple commands
+  INIT_STATE_OCCURRENCE_OOR      = 3;  // reserved for future occurrence selectors
+  INIT_STATE_EXECUTION_FAILED    = 4;  // replay command failed
+  INIT_STATE_TIMEOUT             = 5;  // replay command timed out
+}
+
 // ── Session ───────────────────────────────────────────────────────
 
 message SessionRef { string session_id = 1; }
@@ -113,6 +122,8 @@ message InitStateError {
   string      error_msg    = 2;
   StateResult last_success = 3;  // state just before the failing cmd; absent if
                                  // the very first command (theory header) fails
+  InitStateErrorCode code  = 4;
+  repeated int32 candidate_lines = 5; // selector candidates for NOT_FOUND/AMBIGUOUS/OOR
 }
 
 message DropStateRequest {

@@ -35,7 +35,9 @@ final case class ComputedInitSuccess(
 final case class ComputedInitFailure(
     failedLine: Int,
     errorMsg: String,
-    lastSuccessState: Option[ToplevelState]
+    lastSuccessState: Option[ToplevelState],
+    code: InitStateErrorCode,
+    candidateLines: List[Int] = Nil
 ) extends ComputedInitState
 
 final case class ComputedState(
@@ -196,15 +198,25 @@ class IsabelleSession(
       timeoutMs: Int
   ): ComputedInitState = {
     val cached = theoryCache.computeIfAbsent(thyPath, p => loadAndCacheImpl(p))
-
-    val targetLine = position match {
-      case Left(n)        => n
-      case Right(cmdText) =>
-        cached.transitions
-          .find { case (_, cmd) => cmd.contains(cmdText) }
-          .flatMap { case (tr, _) => tr.position.line }
-          .getOrElse(Int.MaxValue)
+    val transitionsWithLines = cached.transitions.map { case (tr, cmd) =>
+      (tr.position.line.getOrElse(0), (tr, cmd))
     }
+    val commandsWithLines = transitionsWithLines.map { case (line, (_, cmd)) =>
+      (line, cmd)
+    }
+
+    val targetLine =
+      ReplayPlanner.resolveTargetLine(commandsWithLines, position) match {
+        case Right(line) => line
+        case Left(selectorError) =>
+          return ComputedInitFailure(
+            failedLine = 0,
+            errorMsg = selectorError.message,
+            lastSuccessState = None,
+            code = selectorError.code,
+            candidateLines = selectorError.candidateLines
+          )
+      }
 
     val bestCache =
       initCache.entrySet().asScala
@@ -219,10 +231,11 @@ class IsabelleSession(
       bestCache.getOrElse((0, theoryManager.initToplevel()))
 
     val toExecute =
-      cached.transitions.filter { case (tr, _) =>
-        val line = tr.position.line.getOrElse(0)
-        line > startLine && line <= targetLine
-      }
+      ReplayPlanner.transitionsBetweenLines(
+        transitionsWithLines,
+        startLine,
+        targetLine
+      )
 
     var currentState = startState
     var lastSuccessState = startState
@@ -242,7 +255,20 @@ class IsabelleSession(
           )
           val lastSuccessOpt =
             if (lastSuccessLine > 0) Some(lastSuccessState) else None
-          return ComputedInitFailure(line, errMsg, lastSuccessOpt)
+          val code =
+            e match {
+              case ml: IsabelleMLException
+                  if Option(ml.getMessage).exists(_.contains("Timeout after")) =>
+                InitStateErrorCode.INIT_STATE_TIMEOUT
+              case _ =>
+                InitStateErrorCode.INIT_STATE_EXECUTION_FAILED
+            }
+          return ComputedInitFailure(
+            line,
+            errMsg,
+            lastSuccessOpt,
+            code = code
+          )
       }
     }
 

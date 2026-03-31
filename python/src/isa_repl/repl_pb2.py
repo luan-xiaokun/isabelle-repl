@@ -24,17 +24,19 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nrepl.proto\x12\x03isa\" \n\nSessionRef\x12\x12\n\nsession_id\x18\x01 \x01(\t\"i\n\x14\x43reateSessionRequest\x12\x10\n\x08isa_path\x18\x01 \x01(\t\x12\r\n\x05logic\x18\x02 \x01(\t\x12\x19\n\x11working_directory\x18\x03 \x01(\t\x12\x15\n\rsession_roots\x18\x04 \x03(\t\"+\n\x15\x43reateSessionResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"<\n\x11LoadTheoryRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0btheory_path\x18\x02 \x01(\t\"@\n\x12LoadTheoryResponse\x12\x13\n\x0btheory_path\x18\x01 \x01(\t\x12\x15\n\rcommand_count\x18\x02 \x01(\x05\"X\n\x13ListCommandsRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0btheory_path\x18\x02 \x01(\t\x12\x18\n\x10only_proof_stmts\x18\x03 \x01(\x08\"?\n\rTheoryCommand\x12\x0c\n\x04text\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0c\n\x04line\x18\x03 \x01(\x05J\x04\x08\x04\x10\x05\"<\n\x14ListCommandsResponse\x12$\n\x08\x63ommands\x18\x01 \x03(\x0b\x32\x12.isa.TheoryCommand\"\x1c\n\x08StateRef\x12\x10\n\x08state_id\x18\x01 \x01(\t\"\xa0\x01\n\x10InitStateRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0btheory_path\x18\x02 \x01(\t\x12\x14\n\nafter_line\x18\x03 \x01(\x05H\x00\x12\x17\n\rafter_command\x18\x04 \x01(\tH\x00\x12\x12\n\ntimeout_ms\x18\x05 \x01(\x05\x12\x14\n\x0cinclude_text\x18\x06 \x01(\x08\x42\n\n\x08position\"h\n\x11InitStateResponse\x12#\n\x07success\x18\x01 \x01(\x0b\x32\x10.isa.StateResultH\x00\x12$\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x13.isa.InitStateErrorH\x00\x42\x08\n\x06result\"`\n\x0eInitStateError\x12\x13\n\x0b\x66\x61iled_line\x18\x01 \x01(\x05\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12&\n\x0clast_success\x18\x03 \x01(\x0b\x32\x10.isa.StateResult\"%\n\x10\x44ropStateRequest\x12\x11\n\tstate_ids\x18\x01 \x03(\t\"c\n\x0e\x45xecuteRequest\x12\x17\n\x0fsource_state_id\x18\x01 \x01(\t\x12\x0e\n\x06tactic\x18\x02 \x01(\t\x12\x12\n\ntimeout_ms\x18\x03 \x01(\x05\x12\x14\n\x0cinclude_text\x18\x04 \x01(\x08\"\xa0\x01\n\x0bStateResult\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x1f\n\x06status\x18\x02 \x01(\x0e\x32\x0f.isa.ExecStatus\x12\x11\n\terror_msg\x18\x03 \x01(\t\x12\x13\n\x0bproof_level\x18\x04 \x01(\x05\x12\x1c\n\x04mode\x18\x05 \x01(\x0e\x32\x0e.isa.StateMode\x12\x18\n\x10proof_state_text\x18\x06 \x01(\t\"h\n\x13\x45xecuteBatchRequest\x12\x17\n\x0fsource_state_id\x18\x01 \x01(\t\x12\x0f\n\x07tactics\x18\x02 \x03(\t\x12\x12\n\ntimeout_ms\x18\x03 \x01(\x05\x12\x13\n\x0b\x64rop_failed\x18\x04 \x01(\x08\"9\n\x14\x45xecuteBatchResponse\x12!\n\x07results\x18\x01 \x03(\x0b\x32\x10.isa.StateResult\"c\n\x13SledgehammerRequest\x12\x17\n\x0fsource_state_id\x18\x01 \x01(\t\x12\x12\n\ntimeout_ms\x18\x02 \x01(\x05\x12\x1f\n\x17sledgehammer_timeout_ms\x18\x03 \x01(\x05\"W\n\x14SledgehammerResponse\x12\r\n\x05\x66ound\x18\x01 \x01(\x08\x12\x0e\n\x06tactic\x18\x02 \x01(\t\x12 \n\x06result\x18\x03 \x01(\x0b\x32\x10.isa.StateResult\"=\n\x13GetStateInfoRequest\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x14\n\x0cinclude_text\x18\x02 \x01(\x08\"\x85\x01\n\tStateInfo\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x1c\n\x04mode\x18\x02 \x01(\x0e\x32\x0e.isa.StateMode\x12\x13\n\x0bproof_level\x18\x03 \x01(\x05\x12\x18\n\x10proof_state_text\x18\x04 \x01(\t\x12\x19\n\x11local_theory_desc\x18\x05 \x01(\t\"\x07\n\x05\x45mpty*E\n\nExecStatus\x12\x0b\n\x07SUCCESS\x10\x00\x12\x12\n\x0ePROOF_COMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x12\x0b\n\x07TIMEOUT\x10\x03*U\n\tStateMode\x12\x0c\n\x08TOPLEVEL\x10\x00\x12\n\n\x06THEORY\x10\x01\x12\x10\n\x0cLOCAL_THEORY\x10\x02\x12\t\n\x05PROOF\x10\x03\x12\x11\n\rSKIPPED_PROOF\x10\x04\x32\xa2\x05\n\x0cIsabelleREPL\x12\x46\n\rCreateSession\x12\x19.isa.CreateSessionRequest\x1a\x1a.isa.CreateSessionResponse\x12-\n\x0e\x44\x65stroySession\x12\x0f.isa.SessionRef\x1a\n.isa.Empty\x12=\n\nLoadTheory\x12\x16.isa.LoadTheoryRequest\x1a\x17.isa.LoadTheoryResponse\x12I\n\x12ListTheoryCommands\x12\x18.isa.ListCommandsRequest\x1a\x19.isa.ListCommandsResponse\x12:\n\tInitState\x12\x15.isa.InitStateRequest\x1a\x16.isa.InitStateResponse\x12.\n\tDropState\x12\x15.isa.DropStateRequest\x1a\n.isa.Empty\x12,\n\rDropAllStates\x12\x0f.isa.SessionRef\x1a\n.isa.Empty\x12\x30\n\x07\x45xecute\x12\x13.isa.ExecuteRequest\x1a\x10.isa.StateResult\x12\x43\n\x0c\x45xecuteBatch\x12\x18.isa.ExecuteBatchRequest\x1a\x19.isa.ExecuteBatchResponse\x12\x46\n\x0fRunSledgehammer\x12\x18.isa.SledgehammerRequest\x1a\x19.isa.SledgehammerResponse\x12\x38\n\x0cGetStateInfo\x12\x18.isa.GetStateInfoRequest\x1a\x0e.isa.StateInfob\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nrepl.proto\x12\x03isa\" \n\nSessionRef\x12\x12\n\nsession_id\x18\x01 \x01(\t\"i\n\x14\x43reateSessionRequest\x12\x10\n\x08isa_path\x18\x01 \x01(\t\x12\r\n\x05logic\x18\x02 \x01(\t\x12\x19\n\x11working_directory\x18\x03 \x01(\t\x12\x15\n\rsession_roots\x18\x04 \x03(\t\"+\n\x15\x43reateSessionResponse\x12\x12\n\nsession_id\x18\x01 \x01(\t\"<\n\x11LoadTheoryRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0btheory_path\x18\x02 \x01(\t\"@\n\x12LoadTheoryResponse\x12\x13\n\x0btheory_path\x18\x01 \x01(\t\x12\x15\n\rcommand_count\x18\x02 \x01(\x05\"X\n\x13ListCommandsRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0btheory_path\x18\x02 \x01(\t\x12\x18\n\x10only_proof_stmts\x18\x03 \x01(\x08\"?\n\rTheoryCommand\x12\x0c\n\x04text\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0c\n\x04line\x18\x03 \x01(\x05J\x04\x08\x04\x10\x05\"<\n\x14ListCommandsResponse\x12$\n\x08\x63ommands\x18\x01 \x03(\x0b\x32\x12.isa.TheoryCommand\"\x1c\n\x08StateRef\x12\x10\n\x08state_id\x18\x01 \x01(\t\"\xa0\x01\n\x10InitStateRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0btheory_path\x18\x02 \x01(\t\x12\x14\n\nafter_line\x18\x03 \x01(\x05H\x00\x12\x17\n\rafter_command\x18\x04 \x01(\tH\x00\x12\x12\n\ntimeout_ms\x18\x05 \x01(\x05\x12\x14\n\x0cinclude_text\x18\x06 \x01(\x08\x42\n\n\x08position\"h\n\x11InitStateResponse\x12#\n\x07success\x18\x01 \x01(\x0b\x32\x10.isa.StateResultH\x00\x12$\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x13.isa.InitStateErrorH\x00\x42\x08\n\x06result\"\xa0\x01\n\x0eInitStateError\x12\x13\n\x0b\x66\x61iled_line\x18\x01 \x01(\x05\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12&\n\x0clast_success\x18\x03 \x01(\x0b\x32\x10.isa.StateResult\x12%\n\x04\x63ode\x18\x04 \x01(\x0e\x32\x17.isa.InitStateErrorCode\x12\x17\n\x0f\x63\x61ndidate_lines\x18\x05 \x03(\x05\"%\n\x10\x44ropStateRequest\x12\x11\n\tstate_ids\x18\x01 \x03(\t\"c\n\x0e\x45xecuteRequest\x12\x17\n\x0fsource_state_id\x18\x01 \x01(\t\x12\x0e\n\x06tactic\x18\x02 \x01(\t\x12\x12\n\ntimeout_ms\x18\x03 \x01(\x05\x12\x14\n\x0cinclude_text\x18\x04 \x01(\x08\"\xa0\x01\n\x0bStateResult\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x1f\n\x06status\x18\x02 \x01(\x0e\x32\x0f.isa.ExecStatus\x12\x11\n\terror_msg\x18\x03 \x01(\t\x12\x13\n\x0bproof_level\x18\x04 \x01(\x05\x12\x1c\n\x04mode\x18\x05 \x01(\x0e\x32\x0e.isa.StateMode\x12\x18\n\x10proof_state_text\x18\x06 \x01(\t\"h\n\x13\x45xecuteBatchRequest\x12\x17\n\x0fsource_state_id\x18\x01 \x01(\t\x12\x0f\n\x07tactics\x18\x02 \x03(\t\x12\x12\n\ntimeout_ms\x18\x03 \x01(\x05\x12\x13\n\x0b\x64rop_failed\x18\x04 \x01(\x08\"9\n\x14\x45xecuteBatchResponse\x12!\n\x07results\x18\x01 \x03(\x0b\x32\x10.isa.StateResult\"c\n\x13SledgehammerRequest\x12\x17\n\x0fsource_state_id\x18\x01 \x01(\t\x12\x12\n\ntimeout_ms\x18\x02 \x01(\x05\x12\x1f\n\x17sledgehammer_timeout_ms\x18\x03 \x01(\x05\"W\n\x14SledgehammerResponse\x12\r\n\x05\x66ound\x18\x01 \x01(\x08\x12\x0e\n\x06tactic\x18\x02 \x01(\t\x12 \n\x06result\x18\x03 \x01(\x0b\x32\x10.isa.StateResult\"=\n\x13GetStateInfoRequest\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x14\n\x0cinclude_text\x18\x02 \x01(\x08\"\x85\x01\n\tStateInfo\x12\x10\n\x08state_id\x18\x01 \x01(\t\x12\x1c\n\x04mode\x18\x02 \x01(\x0e\x32\x0e.isa.StateMode\x12\x13\n\x0bproof_level\x18\x03 \x01(\x05\x12\x18\n\x10proof_state_text\x18\x04 \x01(\t\x12\x19\n\x11local_theory_desc\x18\x05 \x01(\t\"\x07\n\x05\x45mpty*E\n\nExecStatus\x12\x0b\n\x07SUCCESS\x10\x00\x12\x12\n\x0ePROOF_COMPLETE\x10\x01\x12\t\n\x05\x45RROR\x10\x02\x12\x0b\n\x07TIMEOUT\x10\x03*U\n\tStateMode\x12\x0c\n\x08TOPLEVEL\x10\x00\x12\n\n\x06THEORY\x10\x01\x12\x10\n\x0cLOCAL_THEORY\x10\x02\x12\t\n\x05PROOF\x10\x03\x12\x11\n\rSKIPPED_PROOF\x10\x04*\xbe\x01\n\x12InitStateErrorCode\x12\x1c\n\x18INIT_STATE_ERROR_UNKNOWN\x10\x00\x12\x18\n\x14INIT_STATE_NOT_FOUND\x10\x01\x12\x18\n\x14INIT_STATE_AMBIGUOUS\x10\x02\x12\x1d\n\x19INIT_STATE_OCCURRENCE_OOR\x10\x03\x12\x1f\n\x1bINIT_STATE_EXECUTION_FAILED\x10\x04\x12\x16\n\x12INIT_STATE_TIMEOUT\x10\x05\x32\xa2\x05\n\x0cIsabelleREPL\x12\x46\n\rCreateSession\x12\x19.isa.CreateSessionRequest\x1a\x1a.isa.CreateSessionResponse\x12-\n\x0e\x44\x65stroySession\x12\x0f.isa.SessionRef\x1a\n.isa.Empty\x12=\n\nLoadTheory\x12\x16.isa.LoadTheoryRequest\x1a\x17.isa.LoadTheoryResponse\x12I\n\x12ListTheoryCommands\x12\x18.isa.ListCommandsRequest\x1a\x19.isa.ListCommandsResponse\x12:\n\tInitState\x12\x15.isa.InitStateRequest\x1a\x16.isa.InitStateResponse\x12.\n\tDropState\x12\x15.isa.DropStateRequest\x1a\n.isa.Empty\x12,\n\rDropAllStates\x12\x0f.isa.SessionRef\x1a\n.isa.Empty\x12\x30\n\x07\x45xecute\x12\x13.isa.ExecuteRequest\x1a\x10.isa.StateResult\x12\x43\n\x0c\x45xecuteBatch\x12\x18.isa.ExecuteBatchRequest\x1a\x19.isa.ExecuteBatchResponse\x12\x46\n\x0fRunSledgehammer\x12\x18.isa.SledgehammerRequest\x1a\x19.isa.SledgehammerResponse\x12\x38\n\x0cGetStateInfo\x12\x18.isa.GetStateInfoRequest\x1a\x0e.isa.StateInfob\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'repl_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_EXECSTATUS']._serialized_start=1813
-  _globals['_EXECSTATUS']._serialized_end=1882
-  _globals['_STATEMODE']._serialized_start=1884
-  _globals['_STATEMODE']._serialized_end=1969
+  _globals['_EXECSTATUS']._serialized_start=1878
+  _globals['_EXECSTATUS']._serialized_end=1947
+  _globals['_STATEMODE']._serialized_start=1949
+  _globals['_STATEMODE']._serialized_end=2034
+  _globals['_INITSTATEERRORCODE']._serialized_start=2037
+  _globals['_INITSTATEERRORCODE']._serialized_end=2227
   _globals['_SESSIONREF']._serialized_start=19
   _globals['_SESSIONREF']._serialized_end=51
   _globals['_CREATESESSIONREQUEST']._serialized_start=53
@@ -57,28 +59,28 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_INITSTATEREQUEST']._serialized_end=741
   _globals['_INITSTATERESPONSE']._serialized_start=743
   _globals['_INITSTATERESPONSE']._serialized_end=847
-  _globals['_INITSTATEERROR']._serialized_start=849
-  _globals['_INITSTATEERROR']._serialized_end=945
-  _globals['_DROPSTATEREQUEST']._serialized_start=947
-  _globals['_DROPSTATEREQUEST']._serialized_end=984
-  _globals['_EXECUTEREQUEST']._serialized_start=986
-  _globals['_EXECUTEREQUEST']._serialized_end=1085
-  _globals['_STATERESULT']._serialized_start=1088
-  _globals['_STATERESULT']._serialized_end=1248
-  _globals['_EXECUTEBATCHREQUEST']._serialized_start=1250
-  _globals['_EXECUTEBATCHREQUEST']._serialized_end=1354
-  _globals['_EXECUTEBATCHRESPONSE']._serialized_start=1356
-  _globals['_EXECUTEBATCHRESPONSE']._serialized_end=1413
-  _globals['_SLEDGEHAMMERREQUEST']._serialized_start=1415
-  _globals['_SLEDGEHAMMERREQUEST']._serialized_end=1514
-  _globals['_SLEDGEHAMMERRESPONSE']._serialized_start=1516
-  _globals['_SLEDGEHAMMERRESPONSE']._serialized_end=1603
-  _globals['_GETSTATEINFOREQUEST']._serialized_start=1605
-  _globals['_GETSTATEINFOREQUEST']._serialized_end=1666
-  _globals['_STATEINFO']._serialized_start=1669
-  _globals['_STATEINFO']._serialized_end=1802
-  _globals['_EMPTY']._serialized_start=1804
-  _globals['_EMPTY']._serialized_end=1811
-  _globals['_ISABELLEREPL']._serialized_start=1972
-  _globals['_ISABELLEREPL']._serialized_end=2646
+  _globals['_INITSTATEERROR']._serialized_start=850
+  _globals['_INITSTATEERROR']._serialized_end=1010
+  _globals['_DROPSTATEREQUEST']._serialized_start=1012
+  _globals['_DROPSTATEREQUEST']._serialized_end=1049
+  _globals['_EXECUTEREQUEST']._serialized_start=1051
+  _globals['_EXECUTEREQUEST']._serialized_end=1150
+  _globals['_STATERESULT']._serialized_start=1153
+  _globals['_STATERESULT']._serialized_end=1313
+  _globals['_EXECUTEBATCHREQUEST']._serialized_start=1315
+  _globals['_EXECUTEBATCHREQUEST']._serialized_end=1419
+  _globals['_EXECUTEBATCHRESPONSE']._serialized_start=1421
+  _globals['_EXECUTEBATCHRESPONSE']._serialized_end=1478
+  _globals['_SLEDGEHAMMERREQUEST']._serialized_start=1480
+  _globals['_SLEDGEHAMMERREQUEST']._serialized_end=1579
+  _globals['_SLEDGEHAMMERRESPONSE']._serialized_start=1581
+  _globals['_SLEDGEHAMMERRESPONSE']._serialized_end=1668
+  _globals['_GETSTATEINFOREQUEST']._serialized_start=1670
+  _globals['_GETSTATEINFOREQUEST']._serialized_end=1731
+  _globals['_STATEINFO']._serialized_start=1734
+  _globals['_STATEINFO']._serialized_end=1867
+  _globals['_EMPTY']._serialized_start=1869
+  _globals['_EMPTY']._serialized_end=1876
+  _globals['_ISABELLEREPL']._serialized_start=2230
+  _globals['_ISABELLEREPL']._serialized_end=2904
 # @@protoc_insertion_point(module_scope)

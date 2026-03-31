@@ -204,6 +204,35 @@ class TestInitState:
         if result.error.last_success is not None:
             client.drop_state([result.error.last_success.state_id])
 
+    def test_after_command_not_found_returns_structured_selector_error(
+        self, client, hol_session
+    ):
+        client.load_theory(hol_session, SIMPLE_THY)
+        result = client.init_state(
+            hol_session,
+            SIMPLE_THY,
+            after_command="definitely_not_a_real_command_selector",
+        )
+        assert not result.is_success()
+        assert result.error is not None
+        assert result.error.code == "INIT_STATE_NOT_FOUND"
+        assert result.error.candidate_lines == []
+
+    def test_after_command_ambiguous_requires_explicit_disambiguation(
+        self, client, hol_session
+    ):
+        client.load_theory(hol_session, SIMPLE_THY)
+        # "by simp" appears multiple times in Simple.thy, so selector must be ambiguous.
+        result = client.init_state(
+            hol_session,
+            SIMPLE_THY,
+            after_command="by simp",
+        )
+        assert not result.is_success()
+        assert result.error is not None
+        assert result.error.code == "INIT_STATE_AMBIGUOUS"
+        assert len(result.error.candidate_lines) > 1
+
 
 # ── Execute ────────────────────────────────────────────────────────────────────
 

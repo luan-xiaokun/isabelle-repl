@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -20,6 +20,8 @@ class _FakeErrorField:
     failed_line: int
     error_msg: str
     last_success: pb2.StateResult | None = None
+    code: int = pb2.INIT_STATE_ERROR_UNKNOWN
+    candidate_lines: list[int] = field(default_factory=list)
 
     def HasField(self, name: str) -> bool:
         return name == "last_success" and self.last_success is not None
@@ -137,7 +139,13 @@ def test_parse_state_result_falls_back_to_numeric_values():
 def test_init_state_result_unwrap_raises_with_context():
     result = InitStateResult(
         success=None,
-        error=InitStateError(failed_line=12, error_msg="bad replay", last_success=None),
+        error=InitStateError(
+            failed_line=12,
+            error_msg="bad replay",
+            last_success=None,
+            code="INIT_STATE_EXECUTION_FAILED",
+            candidate_lines=[],
+        ),
     )
 
     with pytest.raises(RuntimeError, match=r"line 12: bad replay"):
@@ -280,9 +288,34 @@ def test_init_state_builds_request_from_after_command_and_returns_error(client_e
     assert result.error.failed_line == 9
     assert result.error.last_success is not None
     assert result.error.last_success.state_id == "state-0"
+    assert result.error.code == "INIT_STATE_ERROR_UNKNOWN"
+    assert result.error.candidate_lines == []
     _, request = stub.calls[-1]
     assert request.after_line == 0
     assert request.after_command == 'lemma trivial: "True"'
+
+
+def test_init_state_error_code_and_candidates_are_mapped(client_env):
+    client, stub, _ = client_env
+    stub.init_state_response = _FakeInitStateResponse(
+        error=_FakeErrorField(
+            failed_line=0,
+            error_msg="ambiguous selector",
+            code=pb2.INIT_STATE_AMBIGUOUS,
+            candidate_lines=[10, 42],
+        )
+    )
+
+    result = client.init_state(
+        "session-1",
+        "/tmp/Simple.thy",
+        after_command="by simp",
+    )
+
+    assert not result.is_success()
+    assert result.error is not None
+    assert result.error.code == "INIT_STATE_AMBIGUOUS"
+    assert result.error.candidate_lines == [10, 42]
 
 
 def test_init_after_header_uses_theory_command_line(client_env, monkeypatch):

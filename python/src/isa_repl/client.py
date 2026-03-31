@@ -61,6 +61,8 @@ class InitStateError:
     failed_line: int
     error_msg: str
     last_success: StateResult | None  # None if the very first cmd failed
+    code: str
+    candidate_lines: list[int]
 
 
 @dataclass
@@ -98,6 +100,15 @@ _STATE_MODE_NAMES = {
     pb2.LOCAL_THEORY: "LOCAL_THEORY",
     pb2.PROOF: "PROOF",
     pb2.SKIPPED_PROOF: "SKIPPED_PROOF",
+}
+
+_INIT_STATE_ERROR_CODE_NAMES = {
+    pb2.INIT_STATE_ERROR_UNKNOWN: "INIT_STATE_ERROR_UNKNOWN",
+    pb2.INIT_STATE_NOT_FOUND: "INIT_STATE_NOT_FOUND",
+    pb2.INIT_STATE_AMBIGUOUS: "INIT_STATE_AMBIGUOUS",
+    pb2.INIT_STATE_OCCURRENCE_OOR: "INIT_STATE_OCCURRENCE_OOR",
+    pb2.INIT_STATE_EXECUTION_FAILED: "INIT_STATE_EXECUTION_FAILED",
+    pb2.INIT_STATE_TIMEOUT: "INIT_STATE_TIMEOUT",
 }
 
 
@@ -239,6 +250,8 @@ class IsaReplClient:
                     failed_line=err.failed_line,
                     error_msg=err.error_msg,
                     last_success=last,
+                    code=_INIT_STATE_ERROR_CODE_NAMES.get(err.code, str(err.code)),
+                    candidate_lines=list(err.candidate_lines),
                 ),
             )
 

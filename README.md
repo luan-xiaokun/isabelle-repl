@@ -330,6 +330,8 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 
 `StateInfo.local_theory_desc` is a reserved forward-looking field that is exposed in the Python client, but it is currently unimplemented and the server returns `""`.
 
+`InitStateError.code` and `InitStateError.candidate_lines` provide structured selector/replay failure details. For `after_command`, matching now uses normalized exact command text (not substring matching) and requires a unique match.
+
 ### State lifecycle semantics
 
 `drop_state(state_ids)` is idempotent. Unknown or already-dropped IDs are ignored.
@@ -348,6 +350,16 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 | `PROOF_COMPLETE` | Proof closed (proof level dropped to 0) |
 | `ERROR` | Tactic failed; `error_msg` contains the Isabelle error |
 | `TIMEOUT` | Execution exceeded `timeout_ms` |
+
+### InitState selector errors
+
+| Code | Meaning |
+|------|---------|
+| `INIT_STATE_NOT_FOUND` | `after_command` matched no command |
+| `INIT_STATE_AMBIGUOUS` | `after_command` matched multiple commands |
+| `INIT_STATE_OCCURRENCE_OOR` | reserved for future occurrence selectors |
+| `INIT_STATE_EXECUTION_FAILED` | replay failed while executing a matched command |
+| `INIT_STATE_TIMEOUT` | replay timed out while executing a matched command |
 
 ---
 

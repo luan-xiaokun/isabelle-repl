@@ -238,7 +238,13 @@ class IsaReplService(implicit ec: ExecutionContext)
                 )
               )
             )
-          case ComputedInitFailure(failedLine, errorMsg, lastSuccessState) =>
+          case ComputedInitFailure(
+                failedLine,
+                errorMsg,
+                lastSuccessState,
+                code,
+                candidateLines
+              ) =>
             val lastSuccess =
               lastSuccessState.map { state =>
                 val stateId = UUID.randomUUID().toString
@@ -255,7 +261,9 @@ class IsaReplService(implicit ec: ExecutionContext)
                 InitStateError(
                   failedLine = failedLine,
                   errorMsg = errorMsg,
-                  lastSuccess = lastSuccess
+                  lastSuccess = lastSuccess,
+                  code = code,
+                  candidateLines = candidateLines
                 )
               )
             )
