@@ -2,9 +2,9 @@
 
 A Scala gRPC server + Python client that exposes Isabelle as an interactive REPL with:
 
-- Multiple simultaneous proof states (branching, parallel tactic exploration)
+- Multiple simultaneous proof states (branching tactic exploration)
 - Non-destructive state transitions (every `execute` produces a new state ID)
-- Efficient theory loading with two-level preamble caching
+- Efficient theory loading with lazy execution and checkpoint caching
 - Sledgehammer integration for automated proof search
 
 ---
@@ -30,19 +30,21 @@ src/main/
   protobuf/repl.proto              # gRPC service definition (source of truth)
   scala/
     IsaReplServer.scala            # gRPC service impl; session map + entry point
-    IsabelleSession.scala          # One Isabelle process; theory/state caches
-    TheoryManager.scala            # Theory parsing, import resolution, Sledgehammer
+    IsabelleSession.scala          # One Isabelle process; local theory/state caches
+    SessionRootIndex.scala         # ROOT scanning and session directory discovery
+    TheorySourceIndex.scala        # Theory source/import mapping for workdirs
+    TheoryManager.scala            # Theory parsing and Sledgehammer
 
 python/src/isa_repl/
   client.py                        # IsaReplClient — thin gRPC wrapper, returns dataclasses
   repl_pb2*.py                     # Auto-generated; do not edit by hand
 ```
 
-**Proof state model.** Every `execute` allocates a fresh UUID and leaves the source state intact in the session's `stateMap`. Branching is safe without cloning.
+**Proof state model.** Every `execute` allocates a fresh UUID and leaves the source state intact. Live state ownership is tracked by the service via a direct `state_id -> session_id` index plus each session's live-state set, so lookups and cleanup are O(1)/O(states in session) rather than cross-session scans.
 
-**Two caches, lazy execution.** `load_theory` parses the `.thy` file and stores the resulting transition list (`theoryCache`) — no execution yet. `init_state` looks for the highest already-executed checkpoint ≤ the target line (`initCache: (path, line) → stateId`), replays only the delta, and caches the new result. Repeated calls to the same line are O(1); nearby lines share work.
+**Two caches, lazy execution.** `load_theory` parses the `.thy` file and stores the resulting transition list (`theoryCache`) — no execution yet. `init_state` looks for the highest already-executed checkpoint ≤ the target line (`initCache: (path, line) -> state_id`), replays only the delta, and caches the new result. Repeated calls to the same line are O(1); nearby lines share work.
 
-**Session roots.** Two ROOT file layouts are supported: a single ROOT with `in SubDir` clauses (Isabelle standard library style), and AFP-style per-directory ROOT files.
+**Session roots and imports.** Two ROOT file layouts are supported: a single ROOT with `in SubDir` clauses (Isabelle standard library style), and AFP-style per-directory ROOT files. Session discovery and theory/import resolution are indexed per session so AFP entries such as `Completeness` and cross-session examples like `Query_Optimization` can be loaded through the same formal path used by Python integration tests.
 
 ---
 
@@ -153,14 +155,17 @@ The script:
 
 ### 8. Run Python tests
 
-Integration tests require the Scala server (`sbt run`) and Isabelle 2025.
+Python tests are split into two layers:
+
+- Unit/smoke tests do not require a running server
+- Integration tests require the Scala server (`sbt run`) plus Isabelle 2025
 
 ```bash
 cd python
 
-uv run pytest                        # all tests (smoke tests pass without a server)
-uv run pytest tests/test_smoke.py    # smoke only — no server needed
+uv run pytest tests/test_smoke.py tests/test_client_unit.py   # no server needed
 uv run pytest -m integration         # integration tests only
+uv run pytest                        # full suite
 ```
 
 Environment variables (all optional, defaults shown):
@@ -172,7 +177,7 @@ Environment variables (all optional, defaults shown):
 | `ISABELLE_PATH` | `/home/lxk/Isabelle2025` |
 | `AFP_PATH` | `/home/lxk/repositories/afp-2025/thys` |
 
-Tests auto-skip (via `pytest.skip`) when the server is unreachable.
+Integration fixtures auto-skip (via `pytest.skip`) when the server is unreachable.
 
 ---
 
@@ -256,9 +261,9 @@ for tactic in candidates:
 # ✗  'by blast' → Failed
 # ✓  'by (simp add: add.commute)' closes the goal
 
-# ── 6. Batch exploration (parallel) ──────────────────────────────────────────
-#    execute_many sends all tactics to the server in one RPC and runs them
-#    in parallel.  Results are returned in the same order as tactics.
+# ── 6. Batch exploration ─────────────────────────────────────────────────────
+#    execute_many sends all tactics to the server in one RPC and evaluates
+#    them in input order. Results are still returned in the same order.
 results = client.execute_many(
     state.state_id,
     candidates,
@@ -289,10 +294,10 @@ client.close()
 | Concept | API call | Notes |
 |---------|----------|-------|
 | One process per session | `create_session` | Supports multiple concurrent sessions |
-| Parse once, query many | `load_theory` then `list_theory_commands` | Preamble cached in server |
+| Parse once, execute lazily | `load_theory` then `list_theory_commands` | Transitions parsed; execution deferred to `init_state` |
 | Position by line or command text | `init_state(after_line=N)` or `init_state(after_command="…")` | Both reach same ML state |
 | Non-destructive execution | `execute(state_id, tactic)` | `state_id` remains valid after call |
-| Parallel tactic search | `execute_many` | Single RPC, server runs in parallel |
+| Batch tactic search | `execute_many` | Single RPC; server currently evaluates candidates sequentially for strong session-local consistency |
 | Goal inspection is opt-in | `get_state_info(include_text=True)` | Omit for high-throughput loops |
 | Automated proof search | `run_sledgehammer` | Uses cvc5, z3, vampire, verit, … |
 
@@ -310,11 +315,27 @@ client.close()
 | `DropState` | `DropStateRequest → Empty` | Free one or more state IDs |
 | `DropAllStates` | `SessionRef → Empty` | Free all states in a session |
 | `Execute` | `ExecuteRequest → StateResult` | Apply a tactic; allocates a new state ID |
-| `ExecuteBatch` | `ExecuteBatchRequest → ExecuteBatchResponse` | Apply multiple tactics in parallel |
+| `ExecuteBatch` | `ExecuteBatchRequest → ExecuteBatchResponse` | Apply multiple tactics in input order |
 | `RunSledgehammer` | `SledgehammerRequest → SledgehammerResponse` | Automated proof search |
 | `GetStateInfo` | `GetStateInfoRequest → StateInfo` | Query mode / proof level / goal text |
 
 See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full message definitions.
+
+### Current field status
+
+`TheoryCommand.column` has been removed from the public API. It was previously declared in the proto but never populated by the server.
+
+`StateInfo.local_theory_desc` is a reserved forward-looking field that is exposed in the Python client, but it is currently unimplemented and the server returns `""`.
+
+### State lifecycle semantics
+
+`drop_state(state_ids)` is idempotent. Unknown or already-dropped IDs are ignored.
+
+`drop_all_states(session_id)` removes every live state and replay checkpoint for that session, but keeps the session itself and its parsed theory cache alive so `init_state` can be called again.
+
+`destroy_session(session_id)` starts session shutdown immediately, rejects new RPCs for that session, drops all remaining live states, and then tears down the Isabelle process.
+
+`execute_many(..., drop_failed=True)` still returns a `StateResult` for failed candidates, but those failed `state_id`s are already dropped by the server before the RPC returns.
 
 ### Execution status codes
 
@@ -338,9 +359,11 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 ├── src/main/
 │   ├── protobuf/repl.proto             # gRPC service definition (shared source of truth)
 │   └── scala/
-│       ├── IsaReplServer.scala         # Server entry point + gRPC method implementations
-│       ├── IsabelleSession.scala       # Session: Isabelle process + state + theory caches
-│       └── TheoryManager.scala         # Theory parsing, import resolution, Sledgehammer
+│       ├── IsaReplServer.scala         # Server entry point + lifecycle/owner orchestration
+│       ├── IsabelleSession.scala       # Session: Isabelle process + local caches/state
+│       ├── SessionRootIndex.scala      # ROOT scanning and session directory indexing
+│       ├── TheorySourceIndex.scala     # Theory source/import resolution for a workdir
+│       └── TheoryManager.scala         # Theory parsing and Sledgehammer
 └── python/
     ├── pyproject.toml                  # Package metadata (uv / pip)
     ├── scripts/gen_proto.sh            # Regenerate Python gRPC stubs from repl.proto
@@ -361,10 +384,16 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 
 ## Key Design Decisions
 
-**Non-destructive execution.** `execute` always allocates a fresh state ID; the source state is an immutable ML value in Isabelle's heap. Branching and parallel tactic exploration require no explicit clone step.
+**Non-destructive execution.** `execute` always allocates a fresh state ID; the source state is an immutable ML value in Isabelle's heap. Branching requires no explicit clone step.
 
 **Lazy execution with checkpoint cache.** `LoadTheory` only parses — it stores the transition list but executes nothing. `InitState` looks up the highest already-executed checkpoint ≤ the target line, replays only the delta, and caches the result as a new checkpoint. Repeated calls to the same line are O(1); nearby lines share work automatically.
 
 **`GetStateInfo` is opt-in and expensive.** `Execute` and `InitState` return a lightweight `StateResult`. Request `include_text=True` (or call `GetStateInfo`) only when the human-readable goal display is needed.
 
 **Async gRPC server.** All service methods return `Future[T]` and run on a cached thread pool, keeping the server responsive under concurrent load from multiple Python clients.
+
+## Roadmap / TODO
+
+- Implement `StateInfo.local_theory_desc` for obvious local-theory cases, starting with `locale foo` style descriptions.
+- If feasible, later extend `local_theory_desc` to recover reopened local-theory contexts such as `context foo`.
+- Revisit `ExecuteBatch` throughput later if profiling shows that sequential, session-linearized batch evaluation is a bottleneck.

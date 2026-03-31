@@ -14,8 +14,41 @@ build-backend = "hatchling.build"
 packages = ["src/isa_repl"]
 
 [dependency-groups]
-dev = ["grpcio-tools>=1.78.0", "pytest>=9.0.2", "pytest-cov>=7.0.0"]
+dev = [
+    "grpcio-tools>=1.78.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.8",
+]
 
-[tool.pytest.ini_options]
+[tool.pytest]
+minversion = "9.0"
 testpaths = ["tests"]
+pythonpath = ["src"]
 markers = ["integration: requires a running Isabelle REPL server (sbt run)"]
+addopts = [
+    "--cov=isa_repl",
+    "--cov-report=term-missing",
+    "--cov-branch",
+    "-ra",
+]
+
+[tool.coverage.run]
+omit = ["src/isa_repl/repl_pb2.py", "src/isa_repl/repl_pb2_grpc.py"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+force-exclude = true
+extend-exclude = [
+    "src/isa_repl/repl_pb2.py",
+    "src/isa_repl/repl_pb2.pyi",
+    "src/isa_repl/repl_pb2_grpc.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "I"]
+# ignore = ["E501"]
+
+[tool.ruff.format]
+docstring-code-format = true

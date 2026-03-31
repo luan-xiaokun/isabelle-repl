@@ -13,14 +13,14 @@ It does **not** start or manage the Scala server — you must start it separatel
 
 ## Installation
 
-Using uv:
+Using `uv`:
 
 ```bash
 cd python
 uv sync
 ```
 
-Using pip (editable install):
+Using `pip` (editable install):
 
 ```bash
 cd python
@@ -30,7 +30,7 @@ pip install -e .
 ## Usage
 
 ```python
-from isa_repl.client import IsaReplClient
+from isa_repl import IsaReplClient
 
 # The Scala server must already be running on localhost:50051
 with IsaReplClient() as client:
@@ -39,7 +39,11 @@ with IsaReplClient() as client:
         logic="HOL",
         working_directory="/path/to/your/theories",
     )
-    state = client.init_state(session_id, "/path/to/MyTheory.thy", line=42)
+    state = client.init_state(
+        session_id,
+        "/path/to/MyTheory.thy",
+        after_line=42,
+    ).unwrap()
     result = client.execute(state.state_id, "by simp")
     print(result.status)  # "PROOF_COMPLETE" or "ERROR"
     client.destroy_session(session_id)
@@ -50,7 +54,8 @@ Start it with `sbt run` from the repository root.
 
 ## Regenerating protobuf stubs
 
-If `src/main/protobuf/isa_repl.proto` changes, regenerate the Python stubs:
+If [`src/main/protobuf/repl.proto`](../src/main/protobuf/repl.proto) changes,
+regenerate the Python stubs:
 
 ```bash
 cd python
@@ -63,5 +68,13 @@ This requires `grpcio-tools` (included in dev dependencies).
 
 ```bash
 cd python
+uv run pytest tests/test_smoke.py tests/test_client_unit.py
+uv run pytest -m integration
 uv run pytest
 ```
+
+Notes:
+
+- `test_smoke.py` and `test_client_unit.py` do not require a running server
+- Integration tests use the shared fixtures in [`tests/conftest.py`](tests/conftest.py)
+- Auto-generated protobuf modules are excluded from coverage so the report reflects handwritten client code
