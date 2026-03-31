@@ -183,8 +183,12 @@ message StateInfo {
   StateMode mode              = 2;
   int32     proof_level       = 3;
   string    proof_state_text  = 4;  // only when include_text=true
-  string    local_theory_desc = 5;  // Intended to describe the active local theory, e.g. "locale foo".
-                                     // Currently unimplemented: the server returns an empty string.
+  string    local_theory_desc = 5;  // Canonical local-theory descriptor (only for mode=LOCAL_THEORY).
+                                     // Exact forms:
+                                     //  - "locale <long_name>"
+                                     //  - "class <long_name>"
+                                     //  - "local theory context in theory <theory_name>"
+                                     // For non-local-theory modes, the server returns "".
 }
 
 message Empty {}

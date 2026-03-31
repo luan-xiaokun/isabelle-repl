@@ -328,7 +328,12 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 
 `TheoryCommand.column` has been removed from the public API. It was previously declared in the proto but never populated by the server.
 
-`StateInfo.local_theory_desc` is a reserved forward-looking field that is exposed in the Python client, but it is currently unimplemented and the server returns `""`.
+`StateInfo.local_theory_desc` is populated from Isabelle internal local-theory context metadata.
+Canonical forms are:
+- `locale <long_name>`
+- `class <long_name>`
+- `local theory context in theory <theory_name>`
+For non-local-theory states (e.g. proof mode), it is `""`.
 
 `InitStateError.code` and `InitStateError.candidate_lines` provide structured selector/replay failure details. For `after_command`, matching now uses normalized exact command text (not substring matching) and requires a unique match.
 
@@ -409,6 +414,4 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 
 ## Roadmap / TODO
 
-- Implement `StateInfo.local_theory_desc` for obvious local-theory cases, starting with `locale foo` style descriptions.
-- If feasible, later extend `local_theory_desc` to recover reopened local-theory contexts such as `context foo`.
 - Revisit `ExecuteBatch` throughput later if profiling shows that sequential, session-linearized batch evaluation is a bottleneck.

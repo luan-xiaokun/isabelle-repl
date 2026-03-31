@@ -27,6 +27,12 @@ BROKEN_REPLAY_THY = os.path.join(
     os.path.dirname(__file__), "theories", "BrokenReplay.thy"
 )
 SLOW_REPLAY_THY = os.path.join(os.path.dirname(__file__), "theories", "SlowReplay.thy")
+LOCAL_THEORY_INFO_THY = os.path.join(
+    os.path.dirname(__file__), "theories", "LocalTheoryInfo.thy"
+)
+CLASS_LOCAL_THEORY_INFO_THY = os.path.join(
+    os.path.dirname(__file__), "theories", "ClassLocalTheoryInfo.thy"
+)
 
 # 1-indexed line numbers of lemma declarations in Simple.thy
 LINE_TRIVIAL = 5
@@ -36,6 +42,10 @@ LINE_NAT = 14
 LINE_BROKEN_REPLAY_LEMMA = 8
 LINE_BROKEN_REPLAY_BY = 9
 LINE_SLOW_REPLAY_SLEEP = 6
+LINE_LOCAL_FOO_BY = 10
+LINE_LOCAL_NESTED_BY = 16
+LINE_LOCAL_GLOBAL_CTX_BY = 26
+LINE_CLASS_LOCAL_FOO_BY = 10
 
 pytestmark = [pytest.mark.integration, pytest.mark.integration_local]
 
@@ -413,9 +423,7 @@ class TestGetStateInfo:
         finally:
             client.drop_state([state.state_id])
 
-    def test_local_theory_desc_is_reserved_but_currently_empty(
-        self, client, hol_session
-    ):
+    def test_local_theory_desc_is_empty_outside_local_theory(self, client, hol_session):
         client.load_theory(hol_session, SIMPLE_THY)
         state = client.init_state(
             hol_session, SIMPLE_THY, after_line=LINE_TRIVIAL
@@ -424,6 +432,57 @@ class TestGetStateInfo:
             info = client.get_state_info(state.state_id, include_text=False)
             assert hasattr(info, "local_theory_desc")
             assert info.local_theory_desc == ""
+        finally:
+            client.drop_state([state.state_id])
+
+    def test_local_theory_desc_locale_name_in_main_target(self, client, hol_session):
+        client.load_theory(hol_session, LOCAL_THEORY_INFO_THY)
+        state = client.init_state(
+            hol_session, LOCAL_THEORY_INFO_THY, after_line=LINE_LOCAL_FOO_BY
+        ).unwrap()
+        try:
+            info = client.get_state_info(state.state_id, include_text=False)
+            assert info.mode == "LOCAL_THEORY"
+            assert info.local_theory_desc == "locale LocalTheoryInfo.foo"
+        finally:
+            client.drop_state([state.state_id])
+
+    def test_local_theory_desc_mentions_nested_context(self, client, hol_session):
+        client.load_theory(hol_session, LOCAL_THEORY_INFO_THY)
+        state = client.init_state(
+            hol_session, LOCAL_THEORY_INFO_THY, after_line=LINE_LOCAL_NESTED_BY
+        ).unwrap()
+        try:
+            info = client.get_state_info(state.state_id, include_text=False)
+            assert info.mode == "LOCAL_THEORY"
+            assert info.local_theory_desc == "locale LocalTheoryInfo.foo"
+        finally:
+            client.drop_state([state.state_id])
+
+    def test_local_theory_desc_for_theory_context_block(self, client, hol_session):
+        client.load_theory(hol_session, LOCAL_THEORY_INFO_THY)
+        state = client.init_state(
+            hol_session, LOCAL_THEORY_INFO_THY, after_line=LINE_LOCAL_GLOBAL_CTX_BY
+        ).unwrap()
+        try:
+            info = client.get_state_info(state.state_id, include_text=False)
+            assert info.mode == "LOCAL_THEORY"
+            assert (
+                info.local_theory_desc
+                == "local theory context in theory LocalTheoryInfo"
+            )
+        finally:
+            client.drop_state([state.state_id])
+
+    def test_local_theory_desc_for_class_target(self, client, hol_session):
+        client.load_theory(hol_session, CLASS_LOCAL_THEORY_INFO_THY)
+        state = client.init_state(
+            hol_session, CLASS_LOCAL_THEORY_INFO_THY, after_line=LINE_CLASS_LOCAL_FOO_BY
+        ).unwrap()
+        try:
+            info = client.get_state_info(state.state_id, include_text=False)
+            assert info.mode == "LOCAL_THEORY"
+            assert info.local_theory_desc == "class ClassLocalTheoryInfo.foo_class"
         finally:
             client.drop_state([state.state_id])
 

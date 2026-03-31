@@ -359,9 +359,17 @@ class IsabelleSession(
   def getStateInfoLocal(
       stateId: String,
       includeText: Boolean
-  ): (StateMode, Int, String) = {
+  ): (StateMode, Int, String, String) = {
     val state = requireStateLocal(stateId)
-    (modeOf(state), state.proofLevel, proofStateText(state, includeText))
+    val mode = modeOf(state)
+    (
+      mode,
+      state.proofLevel,
+      proofStateText(state, includeText),
+      if (mode == StateMode.LOCAL_THEORY)
+        Ops.localTheoryDesc(state).force.retrieveNow
+      else ""
+    )
   }
 
   def close(): Unit = {
@@ -380,6 +388,33 @@ object IsabelleSession extends OperationCollection {
           |  Timeout.apply (Time.fromMilliseconds timeout) (fold (Toplevel.command_exception int) trs) st
         """.stripMargin
       )
+
+    lazy val localTheoryDesc = compileFunction[ToplevelState, String](
+      """fn st =>
+        |  let
+        |    val ctxt = Toplevel.context_of st;
+        |    val level = Local_Theory.level ctxt;
+        |    val theory_name = Context.theory_base_name (Proof_Context.theory_of ctxt);
+        |    fun prefixed prefix name = prefix ^ " " ^ name;
+        |  in
+        |    if level = 0 then ""
+        |    else
+        |      case Named_Target.class_of ctxt of
+        |        SOME class_name => prefixed "class" class_name
+        |      | NONE =>
+        |          (case Named_Target.locale_of ctxt of
+        |            SOME locale_name => prefixed "locale" locale_name
+        |          | NONE =>
+        |              (case Named_Target.bottom_locale_of ctxt of
+        |                SOME target_name =>
+        |                  if Class.is_class (Proof_Context.theory_of ctxt) target_name
+        |                  then prefixed "class" target_name
+        |                  else prefixed "locale" target_name
+        |              | NONE =>
+        |                  "local theory context in theory " ^ theory_name))
+        |  end
+      """.stripMargin
+    )
   }
 
   override protected def newOps(implicit isabelle: Isabelle) = new Ops

@@ -82,3 +82,14 @@ Notes:
 - `integration_afp_heavy` additionally requires AFP (`AFP_PATH`)
 - Integration tests use the shared fixtures in [`tests/conftest.py`](tests/conftest.py), which auto-skip when prerequisites are missing
 - Auto-generated protobuf modules are excluded from coverage so the report reflects handwritten client code
+
+## `StateInfo.local_theory_desc` contract
+
+`local_theory_desc` follows the protocol-level canonical forms:
+
+- `locale <long_name>`
+- `class <long_name>`
+- `local theory context in theory <theory_name>`
+
+It is populated only when `mode == "LOCAL_THEORY"`.  
+For all other modes, it is `""`.

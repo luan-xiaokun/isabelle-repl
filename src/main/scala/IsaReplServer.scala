@@ -397,7 +397,7 @@ class IsaReplService(implicit ec: ExecutionContext)
   ): Future[StateInfo] =
     futureWrapper {
       withManagedState(request.stateId) { managed =>
-        val (mode, proofLevel, text) =
+        val (mode, proofLevel, text, localTheoryDesc) =
           managed.session.getStateInfoLocal(
             request.stateId,
             request.includeText
@@ -407,7 +407,7 @@ class IsaReplService(implicit ec: ExecutionContext)
           mode = mode,
           proofLevel = proofLevel,
           proofStateText = text,
-          localTheoryDesc = ""
+          localTheoryDesc = localTheoryDesc
         )
       }
     }

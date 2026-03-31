@@ -43,7 +43,10 @@ class StateInfo:
     proof_level: int
     proof_state_text: str
     local_theory_desc: str = (
-        ""  # Reserved for future local theory descriptions; currently unimplemented.
+        ""  # Canonical descriptor for LOCAL_THEORY mode:
+        # "locale <long_name>" | "class <long_name>" |
+        # "local theory context in theory <theory_name>".
+        # For non-LOCAL_THEORY modes, this is "".
     )
 
 
