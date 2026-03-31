@@ -20,20 +20,30 @@ Test scenario (from TASK2.md):
 """
 
 import os
-import pytest
 
-from conftest import AFP_PATH
+import pytest
+from conftest import (
+    AFP_PATH,
+    COMPLETENESS_WORKDIR,
+    HOL_SRC,
+    ISABELLE_PATH,
+    QUERY_OPTIMIZATION_WORKDIR,
+)
 
 COMPLETENESS_THY = os.path.join(AFP_PATH, "Completeness", "Completeness.thy")
+QUERY_OPTIMIZATION_THY = os.path.join(
+    AFP_PATH, "Query_Optimization", "Graph_Additions.thy"
+)
 
 # 1-indexed line numbers in Completeness.thy (verified in TASK2.md)
 LINE_FINITE_SUBS = 131
-LINE_FANS_SUBS   = 134
+LINE_FANS_SUBS = 134
 
 pytestmark = pytest.mark.integration
 
 
 # ── Theory loading ─────────────────────────────────────────────────────────────
+
 
 class TestLoadCompleteness:
     def test_load_returns_positive_command_count(self, client, hol_afp_session):
@@ -45,8 +55,21 @@ class TestLoadCompleteness:
         c2 = client.load_theory(hol_afp_session, COMPLETENESS_THY)
         assert c1 == c2
 
+    def test_afp_session_roots_enable_loading_from_fresh_session(self, client):
+        session_id = client.create_session(
+            isa_path=ISABELLE_PATH,
+            logic="HOL",
+            working_directory=COMPLETENESS_WORKDIR,
+            session_roots=[HOL_SRC, AFP_PATH],
+        )
+        try:
+            assert client.load_theory(session_id, COMPLETENESS_THY) > 0
+        finally:
+            client.destroy_session(session_id)
+
 
 # ── ListTheoryCommands ─────────────────────────────────────────────────────────
+
 
 class TestListCompleteness:
     def test_proof_stmts_include_fans_subs(self, client, hol_afp_session):
@@ -55,10 +78,12 @@ class TestListCompleteness:
             hol_afp_session, COMPLETENESS_THY, only_proof_stmts=True
         )
         texts = [c.text for c in cmds]
-        assert any("fansSubs" in t for t in texts), \
+        assert any("fansSubs" in t for t in texts), (
             "Expected 'fansSubs' lemma in proof statements"
-        assert any("finite_subs" in t for t in texts), \
+        )
+        assert any("finite_subs" in t for t in texts), (
             "Expected 'finite_subs' lemma in proof statements"
+        )
 
     def test_fans_subs_at_line_134(self, client, hol_afp_session):
         client.load_theory(hol_afp_session, COMPLETENESS_THY)
@@ -67,8 +92,9 @@ class TestListCompleteness:
         )
         fans_cmd = next((c for c in cmds if "fansSubs" in c.text), None)
         assert fans_cmd is not None, "lemma fansSubs not found"
-        assert fans_cmd.line == LINE_FANS_SUBS, \
+        assert fans_cmd.line == LINE_FANS_SUBS, (
             f"Expected fansSubs at line {LINE_FANS_SUBS}, got line {fans_cmd.line}"
+        )
 
     def test_finite_subs_at_line_131(self, client, hol_afp_session):
         client.load_theory(hol_afp_session, COMPLETENESS_THY)
@@ -77,11 +103,14 @@ class TestListCompleteness:
         )
         fsubs_cmd = next((c for c in cmds if "finite_subs" in c.text), None)
         assert fsubs_cmd is not None, "lemma finite_subs not found"
-        assert fsubs_cmd.line == LINE_FINITE_SUBS, \
-            f"Expected finite_subs at line {LINE_FINITE_SUBS}, got line {fsubs_cmd.line}"
+        assert fsubs_cmd.line == LINE_FINITE_SUBS, (
+            f"Expected finite_subs at line {LINE_FINITE_SUBS},"
+            f" got line {fsubs_cmd.line}"
+        )
 
 
 # ── InitState at fansSubs (line 134) ───────────────────────────────────────────
+
 
 class TestInitStateFansSubs:
     def test_proof_mode_at_line_134(self, client, hol_afp_session):
@@ -91,8 +120,7 @@ class TestInitStateFansSubs:
             hol_afp_session, COMPLETENESS_THY, after_line=LINE_FANS_SUBS
         ).unwrap()
         try:
-            assert state.mode == "PROOF", \
-                f"Expected PROOF mode, got {state.mode!r}"
+            assert state.mode == "PROOF", f"Expected PROOF mode, got {state.mode!r}"
             assert state.proof_level > 0
         finally:
             client.drop_state([state.state_id])
@@ -109,8 +137,9 @@ class TestInitStateFansSubs:
             info = client.get_state_info(state.state_id, include_text=True)
             assert info.proof_state_text, "Expected non-empty proof state text"
             text = info.proof_state_text
-            assert "fans" in text and "subs" in text, \
+            assert "fans" in text and "subs" in text, (
                 f"Expected 'fans subs' in proof state, got:\n{text}"
+            )
         finally:
             client.drop_state([state.state_id])
 
@@ -129,6 +158,7 @@ class TestInitStateFansSubs:
 
 
 # ── Tactic attempts on fansSubs ────────────────────────────────────────────────
+
 
 class TestFansSubsProof:
     def test_by_simp_then_simp_add(self, client, hol_afp_session):
@@ -150,8 +180,9 @@ class TestFansSubsProof:
                 return
 
             # Simp failed or made partial progress: try the complete proof
-            assert r_simp.status in ("ERROR", "SUCCESS"), \
+            assert r_simp.status in ("ERROR", "SUCCESS"), (
                 f"Unexpected status from 'by simp': {r_simp.status}"
+            )
 
             r_simp_add = client.execute(
                 state.state_id, "by (simp add: fans_def finite_subs)"
@@ -191,7 +222,9 @@ class TestFansSubsProof:
             hol_afp_session, COMPLETENESS_THY, after_line=LINE_FANS_SUBS
         ).unwrap()
         try:
-            result = client.execute(state.state_id, "by (simp add: nonexistent_lemma_xyz)")
+            result = client.execute(
+                state.state_id, "by (simp add: nonexistent_lemma_xyz)"
+            )
             assert result.status == "ERROR"
             assert result.error_msg, "Expected a non-empty error message"
         finally:
@@ -200,10 +233,11 @@ class TestFansSubsProof:
 
 # ── Batch execution on fansSubs ────────────────────────────────────────────────
 
+
 class TestFansSubsBatch:
     def test_execute_many_candidates(self, client, hol_afp_session):
         """
-        Run several candidate tactics in parallel.
+        Run several candidate tactics in one batch request.
         The correct one ('by (simp add: fans_def finite_subs)') must succeed.
         """
         client.load_theory(hol_afp_session, COMPLETENESS_THY)
@@ -211,10 +245,10 @@ class TestFansSubsBatch:
             hol_afp_session, COMPLETENESS_THY, after_line=LINE_FANS_SUBS
         ).unwrap()
         tactics = [
-            "by simp",                             # may fail
-            "by auto",                             # may fail
-            "by (simp add: fans_def finite_subs)", # must succeed
-            "by blast",                            # may fail
+            "by simp",  # may fail
+            "by auto",  # may fail
+            "by (simp add: fans_def finite_subs)",  # must succeed
+            "by blast",  # may fail
         ]
         try:
             results = client.execute_many(state.state_id, tactics, drop_failed=True)
@@ -229,6 +263,7 @@ class TestFansSubsBatch:
 
 
 # ── finite_subs lemma (line 131) ───────────────────────────────────────────────
+
 
 class TestFiniteSubs:
     def test_proof_mode_at_line_131(self, client, hol_afp_session):
@@ -263,3 +298,40 @@ class TestFiniteSubs:
             )
         finally:
             client.drop_all_states(hol_afp_session)
+
+
+class TestCrossAfpRegression:
+    def test_query_optimization_loads_with_cross_afp_session_dependency(
+        self, client, query_optimization_afp_session
+    ):
+        count = client.load_theory(
+            query_optimization_afp_session, QUERY_OPTIMIZATION_THY
+        )
+        assert count > 0, "Expected at least one command in Graph_Additions.thy"
+
+    def test_query_optimization_session_roots_enable_loading_from_fresh_session(
+        self, client
+    ):
+        session_id = client.create_session(
+            isa_path=ISABELLE_PATH,
+            logic="HOL",
+            working_directory=QUERY_OPTIMIZATION_WORKDIR,
+            session_roots=[HOL_SRC, AFP_PATH],
+        )
+        try:
+            assert client.load_theory(session_id, QUERY_OPTIMIZATION_THY) > 0
+        finally:
+            client.destroy_session(session_id)
+
+    def test_query_optimization_replay_runs_to_end(
+        self, client, query_optimization_afp_session
+    ):
+        client.load_theory(query_optimization_afp_session, QUERY_OPTIMIZATION_THY)
+        state = client.init_state(
+            query_optimization_afp_session, QUERY_OPTIMIZATION_THY
+        ).unwrap()
+        try:
+            assert state.proof_level == 0
+            assert state.mode == "TOPLEVEL"
+        finally:
+            client.drop_state([state.state_id])
