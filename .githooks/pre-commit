@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[pre-commit] Python format checks..."
+(cd python && uv run ruff format --check . && uv run ruff check .)
+
+echo "[pre-commit] Scala format checks..."
+sbt scalafmtCheck Test/scalafmtCheck
+
+echo "[pre-commit] OK"
