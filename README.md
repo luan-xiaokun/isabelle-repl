@@ -155,16 +155,19 @@ The script:
 
 ### 8. Run Python tests
 
-Python tests are split into two layers:
+Python tests are split into three layers:
 
-- Unit/smoke tests do not require a running server
-- Integration tests require the Scala server (`sbt run`) plus Isabelle 2025
+- Unit/smoke tests: no server required
+- Local integration (`integration_local`): requires server + Isabelle
+- AFP-heavy integration (`integration_afp_heavy`): requires server + Isabelle + AFP checkout
 
 ```bash
 cd python
 
 uv run pytest tests/test_smoke.py tests/test_client_unit.py   # no server needed
-uv run pytest -m integration         # integration tests only
+uv run pytest -m integration_local   # local integration only (no AFP-heavy tests)
+uv run pytest -m integration_afp_heavy  # AFP-backed heavy integration tests
+uv run pytest -m integration         # all integration tests
 uv run pytest                        # full suite
 ```
 
@@ -177,7 +180,7 @@ Environment variables (all optional, defaults shown):
 | `ISABELLE_PATH` | `/home/lxk/Isabelle2025` |
 | `AFP_PATH` | `/home/lxk/repositories/afp-2025/thys` |
 
-Integration fixtures auto-skip (via `pytest.skip`) when the server is unreachable.
+Integration fixtures perform environment checks and auto-skip (via `pytest.skip`) when prerequisites are missing (server unreachable, Isabelle path missing, AFP path missing for AFP-heavy tests).
 
 ---
 

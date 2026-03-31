@@ -39,7 +39,7 @@ QUERY_OPTIMIZATION_THY = os.path.join(
 LINE_FINITE_SUBS = 131
 LINE_FANS_SUBS = 134
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.integration_afp_heavy]
 
 
 # ── Theory loading ─────────────────────────────────────────────────────────────

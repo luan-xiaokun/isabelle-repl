@@ -2,7 +2,7 @@ package isa.repl
 
 import org.scalatest.funsuite.AnyFunSuite
 
-import isa.repl.{ExecStatus, InitStateResponse}
+import isa.repl.{ExecStatus, IntegrationTags}
 
 /** Regression tests for AFP-backed sessions and pure ROOT/import indexes.
   *
@@ -11,34 +11,43 @@ import isa.repl.{ExecStatus, InitStateResponse}
   */
 class LoadCompletenessTest extends AnyFunSuite {
 
-  val ISA_PATH = os.Path("/home/lxk/Isabelle2025")
-  val HOL_SRC = ISA_PATH / "src" / "HOL"
-  val AFP_THYS = os.Path("/home/lxk/repositories/afp-2025/thys")
-  val SESSION_ROOTS = List(HOL_SRC, AFP_THYS)
+  private val envEither = TestEnv.load()
+  private val SESSION_LOGIC = "HOL"
+  private val missingEnvReason = envEither.left.toOption.map(_.mkString("; ")).getOrElse("")
 
-  val COMP_DIR = AFP_THYS / "Completeness"
-  val COMP_THY = COMP_DIR / "Completeness.thy"
-
-  val TOPOLOGY_DIR = AFP_THYS / "Topology"
+  private def requireEnv(): IntegrationEnv = {
+    assume(
+      envEither.isRight,
+      s"Skipping AFP integration test; prerequisites missing: $missingEnvReason"
+    )
+    envEither.toOption.get
+  }
 
   private def newSession(sessionId: String, workDir: os.Path): IsabelleSession = {
-    val sessionRootIndex = SessionRootIndex.build("HOL", workDir, SESSION_ROOTS)
+    val env = requireEnv()
+    val sessionRoots = List(env.holSrc, env.afpThys)
+    val sessionRootIndex = SessionRootIndex.build(SESSION_LOGIC, workDir, sessionRoots)
     val theorySourceIndex =
       TheorySourceIndex.build(workDir, sessionRootIndex.workDirSessionName)
     new IsabelleSession(
       sessionId = sessionId,
-      isaPath = ISA_PATH,
-      logic = "HOL",
+      isaPath = env.isaPath,
+      logic = SESSION_LOGIC,
       workDir = workDir,
-      sessionRoots = SESSION_ROOTS,
+      sessionRoots = sessionRoots,
       registeredSessionDirectories = sessionRootIndex.registeredSessionDirectories,
       workDirSessionName = sessionRootIndex.workDirSessionName,
       theorySourceIndex = theorySourceIndex
     )
   }
 
-  test("SessionRootIndex finds AFP and Isabelle layout variants") {
-    val index = SessionRootIndex.build("HOL", COMP_DIR, SESSION_ROOTS)
+  test(
+    "SessionRootIndex finds AFP and Isabelle layout variants",
+    IntegrationTags.AfpHeavyIntegration
+  ) {
+    val env = requireEnv()
+    val sessionRoots = List(env.holSrc, env.afpThys)
+    val index = SessionRootIndex.build(SESSION_LOGIC, env.completenessDir, sessionRoots)
     val dirs = index.registeredSessionDirectories.toMap
 
     assert(index.workDirSessionName == "Completeness")
@@ -47,8 +56,12 @@ class LoadCompletenessTest extends AnyFunSuite {
     assert(dirs.contains("HOL-Library"))
   }
 
-  test("TheorySourceIndex resolves local, qualified, and HOL-Library imports") {
-    val completenessIndex = TheorySourceIndex.build(COMP_DIR, "Completeness")
+  test(
+    "TheorySourceIndex resolves local, qualified, and HOL-Library imports",
+    IntegrationTags.AfpHeavyIntegration
+  ) {
+    val env = requireEnv()
+    val completenessIndex = TheorySourceIndex.build(env.completenessDir, "Completeness")
     assert(
       completenessIndex.resolveImport("Completeness", "Tree") ==
         "Completeness.Tree"
@@ -60,27 +73,35 @@ class LoadCompletenessTest extends AnyFunSuite {
       ) == "HOL-Library.FuncSet"
     )
 
-    val topologyIndex = TheorySourceIndex.build(TOPOLOGY_DIR, "Topology")
+    val topologyIndex = TheorySourceIndex.build(env.topologyDir, "Topology")
     assert(
       topologyIndex.resolveImport("Topology", "Lazy-Lists-II.LList2") ==
         "Lazy-Lists-II.LList2"
     )
   }
 
-  test("loadTheory(Completeness.thy) returns positive count") {
-    val session = newSession("test-load", COMP_DIR)
+  test(
+    "loadTheory(Completeness.thy) returns positive count",
+    IntegrationTags.AfpHeavyIntegration
+  ) {
+    val env = requireEnv()
+    val session = newSession("test-load", env.completenessDir)
     try {
-      val count = session.loadTheory(COMP_THY)
+      val count = session.loadTheory(env.completenessThy)
       assert(count > 0, s"Expected positive count, got $count")
     } finally {
       session.close()
     }
   }
 
-  test("listTheoryCommands finds fansSubs at line 134") {
-    val session = newSession("test-list", COMP_DIR)
+  test(
+    "listTheoryCommands finds fansSubs at line 134",
+    IntegrationTags.AfpHeavyIntegration
+  ) {
+    val env = requireEnv()
+    val session = newSession("test-list", env.completenessDir)
     try {
-      val cmds = session.listTheoryCommands(COMP_THY, onlyProofStmts = true)
+      val cmds = session.listTheoryCommands(env.completenessThy, onlyProofStmts = true)
       val fans = cmds.find { case (text, _, _) => text.contains("fansSubs") }
       assert(fans.isDefined, "fansSubs lemma not found")
       val (_, _, line) = fans.get
@@ -90,11 +111,15 @@ class LoadCompletenessTest extends AnyFunSuite {
     }
   }
 
-  test("computeInitState + computeExecute proves fansSubs") {
-    val session = newSession("test-exec", COMP_DIR)
+  test(
+    "computeInitState + computeExecute proves fansSubs",
+    IntegrationTags.AfpHeavyIntegration
+  ) {
+    val env = requireEnv()
+    val session = newSession("test-exec", env.completenessDir)
     try {
-      session.loadTheory(COMP_THY)
-      session.computeInitState(COMP_THY, Left(134), 60000) match {
+      session.loadTheory(env.completenessThy)
+      session.computeInitState(env.completenessThy, Left(134), 60000) match {
         case ComputedInitSuccess(state, _) =>
           session.storeStateLocal("source", state)
           val execResult = session.computeExecute(

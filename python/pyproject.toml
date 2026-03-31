@@ -25,7 +25,11 @@ dev = [
 minversion = "9.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
-markers = ["integration: requires a running Isabelle REPL server (sbt run)"]
+markers = [
+    "integration: any integration test requiring a running Isabelle REPL server",
+    "integration_local: local integration tests without AFP-heavy dependencies",
+    "integration_afp_heavy: AFP-backed integration tests that require AFP checkout",
+]
 addopts = [
     "--cov=isa_repl",
     "--cov-report=term-missing",

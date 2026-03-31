@@ -69,6 +69,8 @@ This requires `grpcio-tools` (included in dev dependencies).
 ```bash
 cd python
 uv run pytest tests/test_smoke.py tests/test_client_unit.py
+uv run pytest -m integration_local
+uv run pytest -m integration_afp_heavy
 uv run pytest -m integration
 uv run pytest
 ```
@@ -76,5 +78,7 @@ uv run pytest
 Notes:
 
 - `test_smoke.py` and `test_client_unit.py` do not require a running server
-- Integration tests use the shared fixtures in [`tests/conftest.py`](tests/conftest.py)
+- `integration_local` requires a running server plus Isabelle (`ISABELLE_PATH`)
+- `integration_afp_heavy` additionally requires AFP (`AFP_PATH`)
+- Integration tests use the shared fixtures in [`tests/conftest.py`](tests/conftest.py), which auto-skip when prerequisites are missing
 - Auto-generated protobuf modules are excluded from coverage so the report reflects handwritten client code

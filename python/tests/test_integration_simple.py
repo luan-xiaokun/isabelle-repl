@@ -37,7 +37,7 @@ LINE_BROKEN_REPLAY_LEMMA = 8
 LINE_BROKEN_REPLAY_BY = 9
 LINE_SLOW_REPLAY_SLEEP = 6
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.integration_local]
 
 
 # ── LoadTheory ─────────────────────────────────────────────────────────────────

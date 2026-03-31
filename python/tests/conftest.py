@@ -13,24 +13,45 @@ Environment overrides:
   AFP_PATH        AFP thys/ root
 """
 
-import os
-
 import grpc
 import pytest
+from test_env import load_test_env, missing_local_prereqs
 
 from isa_repl.client import IsaReplClient
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-SERVER_HOST = os.environ.get("ISA_REPL_HOST", "localhost")
-SERVER_PORT = int(os.environ.get("ISA_REPL_PORT", "50051"))
-ISABELLE_PATH = os.environ.get("ISABELLE_PATH", "/home/lxk/Isabelle2025")
-AFP_PATH = os.environ.get("AFP_PATH", "/home/lxk/repositories/afp-2025/thys")
-HOL_SRC = os.path.join(ISABELLE_PATH, "src", "HOL")
+TEST_ENV = load_test_env()
 
-THEORIES_DIR = os.path.join(os.path.dirname(__file__), "theories")
-COMPLETENESS_WORKDIR = os.path.join(AFP_PATH, "Completeness")
-QUERY_OPTIMIZATION_WORKDIR = os.path.join(AFP_PATH, "Query_Optimization")
+SERVER_HOST = TEST_ENV.server_host
+SERVER_PORT = TEST_ENV.server_port
+ISABELLE_PATH = str(TEST_ENV.isabelle_path)
+AFP_PATH = str(TEST_ENV.afp_path)
+HOL_SRC = str(TEST_ENV.hol_src)
+
+THEORIES_DIR = str(TEST_ENV.theories_dir)
+COMPLETENESS_WORKDIR = str(TEST_ENV.completeness_workdir)
+QUERY_OPTIMIZATION_WORKDIR = str(TEST_ENV.query_optimization_workdir)
+
+
+def _skip_if_local_prereqs_missing(require_afp: bool) -> None:
+    missing = missing_local_prereqs(TEST_ENV, require_afp=require_afp)
+    if missing:
+        msg = "Local integration prerequisites not met:\n- " + "\n- ".join(missing)
+        pytest.skip(msg)
+
+
+def _skip_if_server_unreachable() -> None:
+    channel = grpc.insecure_channel(f"{SERVER_HOST}:{SERVER_PORT}")
+    try:
+        grpc.channel_ready_future(channel).result(timeout=1)
+    except grpc.FutureTimeoutError:
+        pytest.skip(
+            "Isabelle REPL server unreachable at "
+            f"{SERVER_HOST}:{SERVER_PORT}. Start it with `sbt run`."
+        )
+    finally:
+        channel.close()
 
 
 # ── Client ────────────────────────────────────────────────────────────────────
@@ -39,6 +60,8 @@ QUERY_OPTIMIZATION_WORKDIR = os.path.join(AFP_PATH, "Query_Optimization")
 @pytest.fixture(scope="session")
 def client():
     """gRPC client shared across the entire test session."""
+    _skip_if_local_prereqs_missing(require_afp=False)
+    _skip_if_server_unreachable()
     with IsaReplClient(host=SERVER_HOST, port=SERVER_PORT) as c:
         yield c
 
@@ -52,6 +75,7 @@ def hol_session(client):
     Isabelle HOL session with working directory = tests/theories/.
     Created once per test module; destroyed after the module finishes.
     """
+    _skip_if_local_prereqs_missing(require_afp=False)
     try:
         session_id = client.create_session(
             isa_path=ISABELLE_PATH,
@@ -79,6 +103,7 @@ def hol_afp_session(client):
     Isabelle HOL session with AFP session roots.
     Working directory = AFP Completeness/ so the server can resolve local .thy imports.
     """
+    _skip_if_local_prereqs_missing(require_afp=True)
     try:
         session_id = client.create_session(
             isa_path=ISABELLE_PATH,
@@ -104,6 +129,7 @@ def query_optimization_afp_session(client):
     Isabelle HOL session with AFP session roots and Query_Optimization as workdir.
     Used to validate cross-AFP session imports and whole-theory replay.
     """
+    _skip_if_local_prereqs_missing(require_afp=True)
     try:
         session_id = client.create_session(
             isa_path=ISABELLE_PATH,
