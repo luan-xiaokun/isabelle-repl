@@ -2,8 +2,10 @@ package isa.repl
 
 import java.util.UUID
 import java.util.concurrent.{ConcurrentHashMap, Executors}
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.logging.Logger
+
 import scala.jdk.CollectionConverters._
+import scala.concurrent.{ExecutionContext, Future}
 
 import de.unruh.isabelle.control.{
   IsabelleControllerException,
@@ -12,17 +14,33 @@ import de.unruh.isabelle.control.{
 import de.unruh.isabelle.pure.ToplevelState
 import io.grpc.{Server, Status, StatusRuntimeException}
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder
-import java.util.logging.Logger
 
 import isa.repl._
+
+final class ManagedSession(
+    val sessionId: String,
+    val session: IsabelleSession,
+    val sessionRootIndex: SessionRootIndex,
+    val theorySourceIndex: TheorySourceIndex
+) {
+  val lock: AnyRef = new AnyRef
+  val liveStateIds = ConcurrentHashMap.newKeySet[String]()
+  private var closing = false
+
+  def isClosingLocked: Boolean = closing
+
+  def startClosingLocked(): Unit =
+    closing = true
+}
 
 class IsaReplService(implicit ec: ExecutionContext)
     extends IsabelleREPLGrpc.IsabelleREPL {
 
   private val log = Logger.getLogger(classOf[IsaReplService].getName)
-  private val sessionMap = new ConcurrentHashMap[String, IsabelleSession]()
-
-  // ── Error handling ────────────────────────────────────────────────────────
+  private val sessionMap = new ConcurrentHashMap[String, ManagedSession]()
+  // Live-state invariant: a live state_id must exist here, in
+  // ManagedSession.liveStateIds, and in IsabelleSession.stateMap.
+  private val stateOwnerMap = new ConcurrentHashMap[String, String]()
 
   private def tryWrapper[T](f: => T): T =
     try {
@@ -43,45 +61,114 @@ class IsaReplService(implicit ec: ExecutionContext)
   private def futureWrapper[T](f: => T): Future[T] =
     Future(tryWrapper(f))
 
-  private def getSession(sessionId: String): IsabelleSession = {
-    val s = sessionMap.get(sessionId)
-    if (s == null)
+  private def getManagedSession(sessionId: String): ManagedSession = {
+    val managed = sessionMap.get(sessionId)
+    if (managed == null)
       throw new StatusRuntimeException(
         Status.NOT_FOUND.withDescription(s"Session not found: $sessionId")
       )
-    s
+    managed
   }
 
-  /** Find the session that owns a given state ID. */
-  private def findStateOwner(
-      stateId: String
-  ): (IsabelleSession, ToplevelState) =
-    sessionMap
-      .values()
-      .asScala
-      .flatMap { s => Option(s.stateMap.get(stateId)).map(st => (s, st)) }
-      .headOption
-      .getOrElse(
-        throw new StatusRuntimeException(
-          Status.NOT_FOUND.withDescription(s"State not found: $stateId")
-        )
+  private def sessionClosing(sessionId: String): Nothing =
+    throw new StatusRuntimeException(
+      Status.FAILED_PRECONDITION.withDescription(
+        s"Session is closing: $sessionId"
       )
+    )
 
-  // ── Session ───────────────────────────────────────────────────────────────
+  private def stateNotFound(stateId: String): Nothing =
+    throw new StatusRuntimeException(
+      Status.NOT_FOUND.withDescription(s"State not found: $stateId")
+    )
+
+  private def withActiveManagedSession[T](
+      sessionId: String
+  )(f: ManagedSession => T): T = {
+    val managed = getManagedSession(sessionId)
+    managed.lock.synchronized {
+      if (managed.isClosingLocked) sessionClosing(sessionId)
+      f(managed)
+    }
+  }
+
+  private def ensureLiveStateLocked(
+      managed: ManagedSession,
+      stateId: String
+  ): Unit = {
+    val ownerSessionId = stateOwnerMap.get(stateId)
+    if (
+      ownerSessionId != managed.sessionId ||
+      !managed.liveStateIds.contains(stateId) ||
+      !managed.session.hasStateLocal(stateId)
+    )
+      stateNotFound(stateId)
+  }
+
+  private def withManagedState[T](stateId: String)(f: ManagedSession => T): T = {
+    val ownerSessionId = Option(stateOwnerMap.get(stateId)).getOrElse {
+      stateNotFound(stateId)
+    }
+    val managed =
+      Option(sessionMap.get(ownerSessionId)).getOrElse(stateNotFound(stateId))
+    managed.lock.synchronized {
+      if (managed.isClosingLocked) sessionClosing(managed.sessionId)
+      ensureLiveStateLocked(managed, stateId)
+      f(managed)
+    }
+  }
+
+  private def registerStateLocked(
+      managed: ManagedSession,
+      stateId: String,
+      state: ToplevelState,
+      cacheKey: Option[(os.Path, Int)] = None
+  ): Unit = {
+    managed.session.storeStateLocal(stateId, state, cacheKey)
+    stateOwnerMap.put(stateId, managed.sessionId)
+    managed.liveStateIds.add(stateId)
+  }
+
+  private def dropStateLocked(managed: ManagedSession, stateId: String): Unit = {
+    val removedOwner = stateOwnerMap.remove(stateId, managed.sessionId)
+    val removedLive = managed.liveStateIds.remove(stateId)
+    if (removedOwner || removedLive)
+      managed.session.dropStateLocal(Seq(stateId))
+  }
+
+  private def dropAllStatesLocked(managed: ManagedSession): Unit = {
+    val stateIds = managed.liveStateIds.asScala.toList
+    stateIds.foreach(stateId => stateOwnerMap.remove(stateId, managed.sessionId))
+    managed.liveStateIds.clear()
+    managed.session.dropAllStatesLocal()
+  }
 
   def createSession(
       request: CreateSessionRequest
   ): Future[CreateSessionResponse] =
     futureWrapper {
       val sessionId = UUID.randomUUID().toString
+      val workDir = os.Path(request.workingDirectory)
+      val sessionRoots = request.sessionRoots.map(os.Path(_)).toList
+      val sessionRootIndex =
+        SessionRootIndex.build(request.logic, workDir, sessionRoots)
+      val theorySourceIndex =
+        TheorySourceIndex.build(workDir, sessionRootIndex.workDirSessionName)
       val session = new IsabelleSession(
         sessionId = sessionId,
         isaPath = os.Path(request.isaPath),
         logic = request.logic,
-        workDir = os.Path(request.workingDirectory),
-        sessionRoots = request.sessionRoots.map(os.Path(_)).toList
+        workDir = workDir,
+        sessionRoots = sessionRoots,
+        registeredSessionDirectories =
+          sessionRootIndex.registeredSessionDirectories,
+        workDirSessionName = sessionRootIndex.workDirSessionName,
+        theorySourceIndex = theorySourceIndex
       )
-      sessionMap.put(sessionId, session)
+      sessionMap.put(
+        sessionId,
+        new ManagedSession(sessionId, session, sessionRootIndex, theorySourceIndex)
+      )
       CreateSessionResponse(sessionId = sessionId)
     }
 
@@ -89,69 +176,128 @@ class IsaReplService(implicit ec: ExecutionContext)
       request: SessionRef
   ): Future[Empty] =
     futureWrapper {
-      val session = getSession(request.sessionId)
-      session.close()
-      sessionMap.remove(request.sessionId)
+      val managed = getManagedSession(request.sessionId)
+      managed.lock.synchronized {
+        if (managed.isClosingLocked) sessionClosing(request.sessionId)
+        managed.startClosingLocked()
+        dropAllStatesLocked(managed)
+        managed.session.close()
+        sessionMap.remove(request.sessionId, managed)
+      }
       Empty()
     }
-
-  // ── Theory ────────────────────────────────────────────────────────────────
 
   def loadTheory(
       request: LoadTheoryRequest
   ): Future[LoadTheoryResponse] =
     futureWrapper {
-      val session = getSession(request.sessionId)
-      val commandCount = session.loadTheory(os.Path(request.theoryPath))
-      LoadTheoryResponse(
-        theoryPath = request.theoryPath,
-        commandCount = commandCount
-      )
+      withActiveManagedSession(request.sessionId) { managed =>
+        val commandCount = managed.session.loadTheory(os.Path(request.theoryPath))
+        LoadTheoryResponse(
+          theoryPath = request.theoryPath,
+          commandCount = commandCount
+        )
+      }
     }
 
   def listTheoryCommands(
       request: ListCommandsRequest
   ): Future[ListCommandsResponse] =
     futureWrapper {
-      val session = getSession(request.sessionId)
-      val commands = session.listTheoryCommands(
-        os.Path(request.theoryPath),
-        request.onlyProofStmts
-      )
-      ListCommandsResponse(
-        commands = commands.map { case (text, kind, line) =>
-          TheoryCommand(text = text, kind = kind, line = line)
-        }
-      )
+      withActiveManagedSession(request.sessionId) { managed =>
+        val commands = managed.session.listTheoryCommands(
+          os.Path(request.theoryPath),
+          request.onlyProofStmts
+        )
+        ListCommandsResponse(
+          commands = commands.map { case (text, kind, line) =>
+            TheoryCommand(text = text, kind = kind, line = line)
+          }
+        )
+      }
     }
-
-  // ── ProofState lifecycle ──────────────────────────────────────────────────
 
   def initState(
       request: InitStateRequest
   ): Future[InitStateResponse] =
     futureWrapper {
-      val session = getSession(request.sessionId)
-      val position = request.position match {
-        case InitStateRequest.Position.AfterLine(n)    => Left(n)
-        case InitStateRequest.Position.AfterCommand(s) => Right(s)
-        case InitStateRequest.Position.Empty           => Left(Int.MaxValue)
+      withActiveManagedSession(request.sessionId) { managed =>
+        val position = request.position match {
+          case InitStateRequest.Position.AfterLine(n)    => Left(n)
+          case InitStateRequest.Position.AfterCommand(s) => Right(s)
+          case InitStateRequest.Position.Empty           => Left(Int.MaxValue)
+        }
+        val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 60000
+        managed.session.computeInitState(
+          os.Path(request.theoryPath),
+          position,
+          timeoutMs
+        ) match {
+          case ComputedInitSuccess(state, cacheKey) =>
+            val stateId = UUID.randomUUID().toString
+            registerStateLocked(managed, stateId, state, Some(cacheKey))
+            InitStateResponse(
+              InitStateResponse.Result.Success(
+                managed.session.buildStateResult(
+                  stateId,
+                  state,
+                  ExecStatus.SUCCESS,
+                  includeText = request.includeText
+                )
+              )
+            )
+          case ComputedInitFailure(failedLine, errorMsg, lastSuccessState) =>
+            val lastSuccess =
+              lastSuccessState.map { state =>
+                val stateId = UUID.randomUUID().toString
+                registerStateLocked(managed, stateId, state)
+                managed.session.buildStateResult(
+                  stateId,
+                  state,
+                  ExecStatus.SUCCESS,
+                  includeText = request.includeText
+                )
+              }
+            InitStateResponse(
+              InitStateResponse.Result.Error(
+                InitStateError(
+                  failedLine = failedLine,
+                  errorMsg = errorMsg,
+                  lastSuccess = lastSuccess
+                )
+              )
+            )
+        }
       }
-      val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 60000
-      session.initState(
-        os.Path(request.theoryPath),
-        position,
-        timeoutMs,
-        request.includeText
-      )
     }
 
   def dropState(
       request: DropStateRequest
   ): Future[Empty] =
     futureWrapper {
-      // Best-effort drop across all sessions (state IDs are globally unique UUIDs)
-      sessionMap.values().asScala.foreach(_.dropState(request.stateIds))
+      val uniqueStateIds = request.stateIds.distinct
+      val stateIdsBySession =
+        uniqueStateIds
+          .flatMap(stateId =>
+            Option(stateOwnerMap.get(stateId)).map(sessionId => stateId -> sessionId)
+          )
+          .groupBy(_._2)
+
+      uniqueStateIds.foreach { stateId =>
+        if (!stateOwnerMap.containsKey(stateId))
+          log.fine(s"DropState ignored unknown state_id=$stateId")
+      }
+
+      stateIdsBySession.foreach { case (sessionId, pairs) =>
+        Option(sessionMap.get(sessionId)).foreach { managed =>
+          managed.lock.synchronized {
+            pairs.foreach { case (stateId, _) =>
+              if (stateOwnerMap.get(stateId) == sessionId)
+                dropStateLocked(managed, stateId)
+            }
+          }
+        }
+      }
       Empty()
     }
 
@@ -159,77 +305,119 @@ class IsaReplService(implicit ec: ExecutionContext)
       request: SessionRef
   ): Future[Empty] =
     futureWrapper {
-      val session = getSession(request.sessionId)
-      session.dropAllStates()
-      Empty()
+      withActiveManagedSession(request.sessionId) { managed =>
+        dropAllStatesLocked(managed)
+        Empty()
+      }
     }
-
-  // ── Execution ─────────────────────────────────────────────────────────────
 
   def execute(
       request: ExecuteRequest
   ): Future[StateResult] =
     futureWrapper {
-      val (session, _) = findStateOwner(request.sourceStateId)
-      val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 30000
-      session.execute(
-        request.sourceStateId,
-        request.tactic,
-        timeoutMs,
-        request.includeText
-      )
+      withManagedState(request.sourceStateId) { managed =>
+        val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 30000
+        val computed = managed.session.computeExecute(
+          request.sourceStateId,
+          request.tactic,
+          timeoutMs
+        )
+        val stateId = UUID.randomUUID().toString
+        registerStateLocked(managed, stateId, computed.state)
+        managed.session.buildStateResult(
+          stateId,
+          computed.state,
+          computed.status,
+          computed.errorMsg,
+          request.includeText
+        )
+      }
     }
 
   def executeBatch(
       request: ExecuteBatchRequest
   ): Future[ExecuteBatchResponse] =
     futureWrapper {
-      val (session, _) = findStateOwner(request.sourceStateId)
-      val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 30000
-      val results = session.executeBatch(
-        request.sourceStateId,
-        request.tactics.toList,
-        timeoutMs,
-        request.dropFailed
-      )
-      ExecuteBatchResponse(results = results)
+      withManagedState(request.sourceStateId) { managed =>
+        val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 30000
+        val computedResults = managed.session.computeExecuteBatch(
+          request.sourceStateId,
+          request.tactics.toList,
+          timeoutMs
+        )
+        val resultsWithIds = computedResults.map { computed =>
+          val stateId = UUID.randomUUID().toString
+          registerStateLocked(managed, stateId, computed.state)
+          (
+            stateId,
+            managed.session.buildStateResult(
+              stateId,
+              computed.state,
+              computed.status,
+              computed.errorMsg
+            )
+          )
+        }
+        if (request.dropFailed) {
+          resultsWithIds.foreach { case (stateId, result) =>
+            if (
+              result.status == ExecStatus.ERROR ||
+              result.status == ExecStatus.TIMEOUT
+            )
+              dropStateLocked(managed, stateId)
+          }
+        }
+        ExecuteBatchResponse(results = resultsWithIds.map(_._2))
+      }
     }
-
-  // ── Sledgehammer ──────────────────────────────────────────────────────────
 
   def runSledgehammer(
       request: SledgehammerRequest
   ): Future[SledgehammerResponse] =
     futureWrapper {
-      val (session, _) = findStateOwner(request.sourceStateId)
-      val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 30000
-      val sledgehammerTimeoutMs =
-        if (request.sledgehammerTimeoutMs > 0) request.sledgehammerTimeoutMs
-        else 30000
-      val (found, tactic, resultOpt) =
-        session.runSledgehammer(
+      withManagedState(request.sourceStateId) { managed =>
+        val timeoutMs = if (request.timeoutMs > 0) request.timeoutMs else 30000
+        val sledgehammerTimeoutMs =
+          if (request.sledgehammerTimeoutMs > 0) request.sledgehammerTimeoutMs
+          else 30000
+        val computed = managed.session.computeRunSledgehammer(
           request.sourceStateId,
           timeoutMs,
           sledgehammerTimeoutMs
         )
-      SledgehammerResponse(found = found, tactic = tactic, result = resultOpt)
+        val resultOpt = computed.result.map { result =>
+          val stateId = UUID.randomUUID().toString
+          registerStateLocked(managed, stateId, result.state)
+          managed.session.buildStateResult(
+            stateId,
+            result.state,
+            result.status,
+            result.errorMsg
+          )
+        }
+        SledgehammerResponse(
+          found = computed.found,
+          tactic = computed.tactic,
+          result = resultOpt
+        )
+      }
     }
-
-  // ── Query ─────────────────────────────────────────────────────────────────
 
   def getStateInfo(
       request: GetStateInfoRequest
   ): Future[StateInfo] =
     futureWrapper {
-      val (session, _) = findStateOwner(request.stateId)
-      val (mode, proofLevel, text) =
-        session.getStateInfo(request.stateId, request.includeText)
-      StateInfo(
-        stateId = request.stateId,
-        mode = mode,
-        proofLevel = proofLevel,
-        proofStateText = text
-      )
+      withManagedState(request.stateId) { managed =>
+        val (mode, proofLevel, text) =
+          managed.session.getStateInfoLocal(request.stateId, request.includeText)
+        StateInfo(
+          stateId = request.stateId,
+          mode = mode,
+          proofLevel = proofLevel,
+          proofStateText = text,
+          localTheoryDesc = ""
+        )
+      }
     }
 }
 
@@ -238,7 +426,6 @@ object IsaReplServer {
   private val log = Logger.getLogger(IsaReplServer.getClass.getName)
 
   def main(args: Array[String]): Unit = {
-    // Single-line log format: "2026-03-20 10:24:28 INFO    isa.repl.Foo — message"
     System.setProperty(
       "java.util.logging.SimpleFormatter.format",
       "%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$-7s %3$s — %5$s%6$s%n"

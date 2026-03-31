@@ -38,7 +38,10 @@ object ProofCommands {
   )
 }
 
-class TheoryManager(val sessionName: String)(implicit isabelle: Isabelle) {
+class TheoryManager(
+    val sessionName: String,
+    theorySourceIndex: TheorySourceIndex
+)(implicit isabelle: Isabelle) {
 
   def getThyTransitions(
       thy: Theory,
@@ -53,39 +56,9 @@ class TheoryManager(val sessionName: String)(implicit isabelle: Isabelle) {
     else transitions
   }
 
-  /** Resolve an imported theory name to a session-qualified name.
-    *
-    * Handles the following forms: (1) X.Y — session-qualified: used as-is (2) Y
-    * — bare theory name: prefix with sessionName if found in sessionFilesMap
-    * (3) relative path to .thy file (4) "~~/src/..." — Isabelle home-relative
-    * path (HOL-Library corner case)
-    */
-  private def getTheorySource(
-      name: String,
-      sessionFilesMap: Map[String, List[os.Path]]
-  ): String = {
-    val sanitisedName = name.stripPrefix("\"").stripSuffix("\"")
-    // 1. Corner case: ~~/src/HOL/Library/...
-    if (sanitisedName.startsWith("~~/src/")) {
-      if (!sanitisedName.startsWith("~~/src/HOL/Library/"))
-        throw new Exception(s"Unsupported import $name")
-      return s"HOL-Library.${sanitisedName.stripPrefix("~~/src/HOL/Library/")}"
-    }
-    // 2. Path/name case
-    val thyName = sanitisedName.split("/").last
-    val sessionFiles = sessionFilesMap.getOrElse(sessionName, Nil)
-    if (sessionFiles.exists(_.last == s"$thyName.thy"))
-      s"$sessionName.$thyName"
-    else sanitisedName
-  }
-
   def initToplevel(): ToplevelState = Ops.init_toplevel().force.retrieveNow
 
-  def beginTheory(
-      text: String,
-      path: os.Path,
-      sessionFilesMap: Map[String, List[os.Path]]
-  ): Theory = {
+  def beginTheory(text: String, path: os.Path): Theory = {
     val header = TheoryHeader.read(text)
     val masterDir = Option(path.toNIO.getParent).getOrElse(Paths.get(""))
     Ops
@@ -93,7 +66,7 @@ class TheoryManager(val sessionName: String)(implicit isabelle: Isabelle) {
         masterDir,
         header,
         header.imports
-          .map(imp => getTheorySource(imp, sessionFilesMap))
+          .map(imp => theorySourceIndex.resolveImport(sessionName, imp))
           .map(Theory.apply)
       )
       .force
