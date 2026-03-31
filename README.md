@@ -30,6 +30,7 @@ src/main/
   protobuf/repl.proto              # gRPC service definition (source of truth)
   scala/
     IsaReplServer.scala            # gRPC service impl; session map + entry point
+    SessionBootstrap.scala         # Structured session startup assembly + validation
     IsabelleSession.scala          # One Isabelle process; local theory/state caches
     WorkspaceCatalog.scala         # Unified ROOT/session/import workspace semantics
     TheoryManager.scala            # Theory parsing and Sledgehammer
@@ -374,6 +375,7 @@ See [src/main/protobuf/repl.proto](src/main/protobuf/repl.proto) for full messag
 │   ├── protobuf/repl.proto             # gRPC service definition (shared source of truth)
 │   └── scala/
 │       ├── IsaReplServer.scala         # Server entry point + lifecycle/owner orchestration
+│       ├── SessionBootstrap.scala      # Structured startup assembly used by prod/tests
 │       ├── IsabelleSession.scala       # Session: Isabelle process + local caches/state
 │       ├── WorkspaceCatalog.scala      # Unified ROOT/session/import workspace semantics
 │       └── TheoryManager.scala         # Theory parsing and Sledgehammer

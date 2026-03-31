@@ -28,19 +28,16 @@ class LoadCompletenessTest extends AnyFunSuite {
       workDir: os.Path
   ): IsabelleSession = {
     val env = requireEnv()
-    val sessionRoots = List(env.holSrc, env.afpThys)
-    val workspaceCatalog = WorkspaceCatalog
-      .build(SESSION_LOGIC, workDir, sessionRoots)
+    SessionBootstrap
+      .build(
+        sessionId = sessionId,
+        isaPath = env.isaPath,
+        logic = SESSION_LOGIC,
+        workDir = workDir,
+        sessionRoots = List(env.holSrc, env.afpThys)
+      )
       .fold(error => fail(error.message), identity)
-
-    new IsabelleSession(
-      sessionId = sessionId,
-      isaPath = env.isaPath,
-      logic = SESSION_LOGIC,
-      workDir = workDir,
-      sessionRoots = sessionRoots,
-      workspaceCatalog = workspaceCatalog
-    )
+      .createSession()
   }
 
   test(

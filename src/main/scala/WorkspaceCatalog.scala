@@ -119,19 +119,31 @@ object WorkspaceCatalog {
     buf.toList
   }
 
-  private def collectSessionRoot(root: os.Path): List[(String, Path)] = {
+  private def collectSessionRoot(
+      root: os.Path
+  ): Either[WorkspaceCatalogError, List[(String, Path)]] = {
     val buf = collection.mutable.ListBuffer[(String, Path)]()
     val topRootFile = root / "ROOT"
-    if (os.exists(topRootFile))
-      buf ++= collectFromRootFile(root, os.read(topRootFile))
+    if (os.exists(topRootFile)) {
+      try buf ++= collectFromRootFile(root, os.read(topRootFile))
+      catch {
+        case NonFatal(e) =>
+          return Left(MalformedRoot(topRootFile, e.getMessage))
+      }
+    }
     if (os.isDir(root)) {
       os.list(root).filter(os.isDir).foreach { subDir =>
         val subRootFile = subDir / "ROOT"
-        if (os.exists(subRootFile))
-          buf ++= collectFromRootFile(subDir, os.read(subRootFile))
+        if (os.exists(subRootFile)) {
+          try buf ++= collectFromRootFile(subDir, os.read(subRootFile))
+          catch {
+            case NonFatal(e) =>
+              return Left(MalformedRoot(subRootFile, e.getMessage))
+          }
+        }
       }
     }
-    buf.toList
+    Right(buf.toList)
   }
 
   private def deriveWorkDirSessionName(
@@ -244,16 +256,28 @@ object WorkspaceCatalog {
       workDir: os.Path,
       sessionRoots: List[os.Path]
   ): Either[WorkspaceCatalogError, WorkspaceCatalog] = {
-    val registeredSessionDirectories =
-      sessionRoots.flatMap(collectSessionRoot).distinct
-    val workDirSessionName =
-      deriveWorkDirSessionName(logic, workDir, sessionRoots)
-    parseSessionFilesMap(workDir, workDirSessionName).map { sessionFilesMap =>
-      WorkspaceCatalog(
-        registeredSessionDirectories = registeredSessionDirectories,
-        workDirSessionName = workDirSessionName,
-        sessionFilesMap = sessionFilesMap
-      )
+    val registeredSessionDirectoriesEither =
+      sessionRoots
+        .foldLeft[Either[WorkspaceCatalogError, List[(String, Path)]]](
+          Right(Nil)
+        ) { case (accEither, root) =>
+          for {
+            acc <- accEither
+            entries <- collectSessionRoot(root)
+          } yield acc ++ entries
+        }
+
+    registeredSessionDirectoriesEither.flatMap { entries =>
+      val registeredSessionDirectories = entries.distinct
+      val workDirSessionName =
+        deriveWorkDirSessionName(logic, workDir, sessionRoots)
+      parseSessionFilesMap(workDir, workDirSessionName).map { sessionFilesMap =>
+        WorkspaceCatalog(
+          registeredSessionDirectories = registeredSessionDirectories,
+          workDirSessionName = workDirSessionName,
+          sessionFilesMap = sessionFilesMap
+        )
+      }
     }
   }
 }

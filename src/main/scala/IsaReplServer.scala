@@ -18,8 +18,7 @@ import isa.repl._
 
 final class ManagedSession(
     val sessionId: String,
-    val session: IsabelleSession,
-    val workspaceCatalog: WorkspaceCatalog
+    val session: IsabelleSession
 ) {
   val lock: AnyRef = new AnyRef
   private var closing = false
@@ -141,33 +140,22 @@ class IsaReplService(implicit ec: ExecutionContext)
   ): Future[CreateSessionResponse] =
     futureWrapper {
       val sessionId = UUID.randomUUID().toString
-      val workDir = os.Path(request.workingDirectory)
-      val sessionRoots = request.sessionRoots.map(os.Path(_)).toList
-      val workspaceCatalog =
-        WorkspaceCatalog
-          .build(request.logic, workDir, sessionRoots)
-          .fold(
-            error =>
-              throw new StatusRuntimeException(
-                Status.INVALID_ARGUMENT.withDescription(error.message)
-              ),
-            identity
-          )
-      val session = new IsabelleSession(
-        sessionId = sessionId,
-        isaPath = os.Path(request.isaPath),
-        logic = request.logic,
-        workDir = workDir,
-        sessionRoots = sessionRoots,
-        workspaceCatalog = workspaceCatalog
-      )
+      val bootstrap = SessionBootstrap
+        .build(
+          sessionId = sessionId,
+          isaPath = os.Path(request.isaPath),
+          logic = request.logic,
+          workDir = os.Path(request.workingDirectory),
+          sessionRoots = request.sessionRoots.map(os.Path(_)).toList
+        )
+        .fold(
+          error => throw IsaReplService.bootstrapErrorToStatus(error),
+          identity
+        )
+      val session = bootstrap.createSession()
       sessionMap.put(
         sessionId,
-        new ManagedSession(
-          sessionId,
-          session,
-          workspaceCatalog
-        )
+        new ManagedSession(sessionId, session)
       )
       CreateSessionResponse(sessionId = sessionId)
     }
@@ -423,6 +411,15 @@ class IsaReplService(implicit ec: ExecutionContext)
         )
       }
     }
+}
+
+object IsaReplService {
+  def bootstrapErrorToStatus(
+      error: SessionBootstrapError
+  ): StatusRuntimeException =
+    new StatusRuntimeException(
+      Status.INVALID_ARGUMENT.withDescription(error.message)
+    )
 }
 
 object IsaReplServer {
