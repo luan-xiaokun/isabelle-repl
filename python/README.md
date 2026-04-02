@@ -4,6 +4,8 @@ Python client SDK for the [Isabelle REPL gRPC server](../README.md).
 
 This package provides a Python interface to an Isabelle theorem prover session via gRPC.
 It does **not** start or manage the Scala server — you must start it separately first.
+Experimental proof-repair workflows live in [`examples/`](examples/) rather than
+in the installable package API.
 
 ## Prerequisites
 
@@ -51,6 +53,14 @@ with IsabelleReplClient() as client:
 
 If connection fails with `StatusCode.UNAVAILABLE`, the Scala server is not running.
 Start it with `sbt run` from the repository root.
+
+## Examples
+
+[`examples/proof_repair_demo.py`](examples/proof_repair_demo.py) is an
+experimental script that shows how to orchestrate the REPL client for iterative
+proof repair. It is intentionally kept outside `src/isabelle_repl/` so the SDK
+can stay focused on stable REPL primitives while proof-repair agent design
+continues separately.
 
 ## Regenerating protobuf stubs
 

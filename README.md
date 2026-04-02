@@ -38,6 +38,8 @@ src/main/
 python/src/isabelle_repl/
   client.py                        # IsabelleReplClient — thin gRPC wrapper, returns dataclasses
   repl_pb2*.py                     # Auto-generated; do not edit by hand
+python/examples/
+  proof_repair_demo.py             # Experimental repair workflow example, not package API
 ```
 
 **Proof state model.** Every `execute` allocates a fresh UUID and leaves the source state intact. Live state ownership is tracked via a dedicated `StateRegistry` boundary with `state_id -> session_id` as source of truth, while per-session state storage stays local to `IsabelleSession`.
@@ -187,6 +189,12 @@ Integration fixtures perform environment checks and auto-skip (via `pytest.skip`
 ## Proof Repair — Worked Example
 
 A typical use-case is **proof repair**: given a `.thy` file where a lemma's proof is broken or missing, enumerate candidate tactics and check which one closes the goal.
+
+The repository also contains an experimental script at
+[`python/examples/proof_repair_demo.py`](python/examples/proof_repair_demo.py).
+It is kept outside the installable Python package on purpose: the current
+package boundary is "stable REPL client primitives", while proof repair remains
+an example/prototyping area until the agent design is settled.
 
 The example below works against `python/tests/theories/Simple.thy`:
 
