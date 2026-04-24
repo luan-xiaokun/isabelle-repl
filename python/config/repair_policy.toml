@@ -1,0 +1,19 @@
+[policy]
+default_scope = "artifact_acceptance"
+high_risk_failure_kinds = [
+  "statement_failure",
+  "non_proof_command_failure",
+  "theory_load_or_header_failure",
+]
+
+[placeholder]
+mode = "allow"
+
+[rule_ids]
+high_risk_failure_requires_review = "high_risk_failure_requires_review"
+placeholder_allow = "placeholder_allow"
+placeholder_deny = "placeholder_deny"
+placeholder_requires_review = "placeholder_requires_review"
+fallback_acceptance_requires_review = "fallback_acceptance_requires_review"
+fallback_continuation_requires_review = "fallback_continuation_requires_review"
+default_allow = "default_allow"

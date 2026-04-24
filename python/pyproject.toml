@@ -11,7 +11,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/isabelle_repl"]
+packages = ["src/isabelle_repl", "src/isabelle_repair"]
 
 [dependency-groups]
 dev = [
@@ -29,9 +29,11 @@ markers = [
     "integration: any integration test requiring a running Isabelle REPL server",
     "integration_local: local integration tests without AFP-heavy dependencies",
     "integration_afp_heavy: AFP-backed integration tests that require AFP checkout",
+    "acceptance_gate: curated acceptance suite for repair-agent behavior and doc-contract gate",
 ]
 addopts = [
     "--cov=isabelle_repl",
+    "--cov=isabelle_repair",
     "--cov-report=term-missing",
     "--cov-branch",
     "-ra",
