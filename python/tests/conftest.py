@@ -13,9 +13,11 @@ Environment overrides:
   AFP_PATH        AFP thys/ root
 """
 
+import os
+
 import grpc
 import pytest
-from test_env import load_test_env, missing_local_prereqs
+from shared.runtime_env import load_test_env, missing_local_prereqs
 
 from isabelle_repl.client import IsabelleReplClient
 
@@ -34,6 +36,19 @@ COMPLETENESS_WORKDIR = str(TEST_ENV.completeness_workdir)
 QUERY_OPTIMIZATION_WORKDIR = str(TEST_ENV.query_optimization_workdir)
 
 
+def _ensure_localhost_proxy_bypass() -> None:
+    """
+    gRPC may honor HTTP(S)_PROXY and route localhost through a proxy.
+    Force localhost bypass in test process to keep local integration stable.
+    """
+    current = os.environ.get("NO_PROXY", "")
+    tokens = {item.strip() for item in current.split(",") if item.strip()}
+    tokens.update({"localhost", "127.0.0.1", "::1"})
+    merged = ",".join(sorted(tokens))
+    os.environ["NO_PROXY"] = merged
+    os.environ["no_proxy"] = merged
+
+
 def _skip_if_local_prereqs_missing(require_afp: bool) -> None:
     missing = missing_local_prereqs(TEST_ENV, require_afp=require_afp)
     if missing:
@@ -42,7 +57,11 @@ def _skip_if_local_prereqs_missing(require_afp: bool) -> None:
 
 
 def _skip_if_server_unreachable() -> None:
-    channel = grpc.insecure_channel(f"{SERVER_HOST}:{SERVER_PORT}")
+    _ensure_localhost_proxy_bypass()
+    channel = grpc.insecure_channel(
+        f"{SERVER_HOST}:{SERVER_PORT}",
+        options=(("grpc.enable_http_proxy", 0),),
+    )
     try:
         grpc.channel_ready_future(channel).result(timeout=1)
     except grpc.FutureTimeoutError:
@@ -62,6 +81,7 @@ def client():
     """gRPC client shared across the entire test session."""
     _skip_if_local_prereqs_missing(require_afp=False)
     _skip_if_server_unreachable()
+    _ensure_localhost_proxy_bypass()
     with IsabelleReplClient(host=SERVER_HOST, port=SERVER_PORT) as c:
         yield c
 

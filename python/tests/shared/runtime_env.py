@@ -18,7 +18,7 @@ class RuntimeEnv:
 
 
 def load_test_env() -> RuntimeEnv:
-    base_dir = Path(__file__).resolve().parent
+    tests_dir = Path(__file__).resolve().parents[1]
     isabelle_path = Path(
         os.environ.get("ISABELLE_PATH", "/home/lxk/Isabelle2025")
     ).expanduser()
@@ -30,7 +30,7 @@ def load_test_env() -> RuntimeEnv:
         server_port=int(os.environ.get("ISABELLE_REPL_PORT", "50051")),
         isabelle_path=isabelle_path,
         afp_path=afp_path,
-        theories_dir=base_dir / "theories",
+        theories_dir=tests_dir / "theories",
         completeness_workdir=afp_path / "Completeness",
         query_optimization_workdir=afp_path / "Query_Optimization",
         hol_src=isabelle_path / "src" / "HOL",

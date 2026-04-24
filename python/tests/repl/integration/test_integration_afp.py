@@ -22,13 +22,14 @@ Test scenario (from TASK2.md):
 import os
 
 import pytest
-from conftest import (
-    AFP_PATH,
-    COMPLETENESS_WORKDIR,
-    HOL_SRC,
-    ISABELLE_PATH,
-    QUERY_OPTIMIZATION_WORKDIR,
-)
+from shared.runtime_env import load_test_env
+
+ENV = load_test_env()
+AFP_PATH = str(ENV.afp_path)
+COMPLETENESS_WORKDIR = str(ENV.completeness_workdir)
+HOL_SRC = str(ENV.hol_src)
+ISABELLE_PATH = str(ENV.isabelle_path)
+QUERY_OPTIMIZATION_WORKDIR = str(ENV.query_optimization_workdir)
 
 COMPLETENESS_THY = os.path.join(AFP_PATH, "Completeness", "Completeness.thy")
 QUERY_OPTIMIZATION_THY = os.path.join(

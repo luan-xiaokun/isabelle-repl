@@ -17,22 +17,16 @@ Line numbers in Simple.thy (1-indexed):
   14 lemma nat_not_zero: "(n :: nat) > 0 ⟹ n ≠ 0"
 """
 
-import os
-
 import grpc
 import pytest
+from shared.runtime_env import load_test_env
 
-SIMPLE_THY = os.path.join(os.path.dirname(__file__), "theories", "Simple.thy")
-BROKEN_REPLAY_THY = os.path.join(
-    os.path.dirname(__file__), "theories", "BrokenReplay.thy"
-)
-SLOW_REPLAY_THY = os.path.join(os.path.dirname(__file__), "theories", "SlowReplay.thy")
-LOCAL_THEORY_INFO_THY = os.path.join(
-    os.path.dirname(__file__), "theories", "LocalTheoryInfo.thy"
-)
-CLASS_LOCAL_THEORY_INFO_THY = os.path.join(
-    os.path.dirname(__file__), "theories", "ClassLocalTheoryInfo.thy"
-)
+ENV = load_test_env()
+SIMPLE_THY = str(ENV.theories_dir / "Simple.thy")
+BROKEN_REPLAY_THY = str(ENV.theories_dir / "BrokenReplay.thy")
+SLOW_REPLAY_THY = str(ENV.theories_dir / "SlowReplay.thy")
+LOCAL_THEORY_INFO_THY = str(ENV.theories_dir / "LocalTheoryInfo.thy")
+CLASS_LOCAL_THEORY_INFO_THY = str(ENV.theories_dir / "ClassLocalTheoryInfo.thy")
 
 # 1-indexed line numbers of lemma declarations in Simple.thy
 LINE_TRIVIAL = 5
