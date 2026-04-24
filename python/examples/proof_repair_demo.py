@@ -12,6 +12,15 @@ from typing import Any, Protocol
 from isabelle_repl import IsabelleReplClient, StateResult
 
 
+def _ensure_localhost_proxy_bypass() -> None:
+    current = os.environ.get("NO_PROXY", "")
+    tokens = {item.strip() for item in current.split(",") if item.strip()}
+    tokens.update({"localhost", "127.0.0.1", "::1"})
+    merged = ",".join(sorted(tokens))
+    os.environ["NO_PROXY"] = merged
+    os.environ["no_proxy"] = merged
+
+
 class RepairHook(Protocol):
     def __call__(
         self,
@@ -200,6 +209,7 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+    _ensure_localhost_proxy_bypass()
 
     theory_file: Path = args.theory_file
     if not theory_file.is_file():
